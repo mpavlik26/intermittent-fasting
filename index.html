@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intermittent Fasting Tracker</title>
+    <meta name="description" content="A beautiful and responsive intermittent fasting tracker.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Fasting Tracker</h1>
+            <div class="current-time-container">
+                <span id="current-time">00:00:00</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="status-card" id="status-card">
+                <div class="status-indicator">
+                    <div class="glow-ring"></div>
+                    <div class="status-text-container">
+                        <h2 id="current-state" class="state-title">Potential Eating Window</h2>
+                        <p class="state-description" id="state-description">You can start your eating window when you
+                            are ready.</p>
+                    </div>
+                </div>
+
+                <div class="timer-display hidden" id="timer-display">
+                    <h3 class="timer-label" id="timer-label">Time Remaining</h3>
+                    <div class="countdown" id="countdown">00:00:00</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                    <div class="window-times">
+                        <div class="time-block">
+                            <span class="time-block-label">Started</span>
+                            <span class="time-block-value" id="start-time-val">--:--</span>
+                        </div>
+                        <div class="time-block">
+                            <span class="time-block-label">Ends</span>
+                            <span class="time-block-value" id="end-time-val">--:--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons" style="text-align: center; margin-top: 1.5rem;">
+                    <button id="btn-first-meal" class="btn primary-btn">Log First Meal</button>
+                    <button id="btn-last-meal" class="btn primary-btn hidden">Log Last Meal</button>
+                </div>
+
+                <div class="manual-log-section">
+                    <h3 class="log-title">Retrospective Log</h3>
+                    <div class="log-controls">
+                        <select id="meal-type-select" class="dropdown-input" aria-label="Meal Type">
+                            <option value="first">First Meal</option>
+                            <option value="last">Last Meal</option>
+                        </select>
+                        <input type="time" id="meal-time-input" class="time-input" aria-label="Meal time">
+                        <button id="btn-submit-log" class="btn primary-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M5 12h14" />
+                                <path d="m12 5 7 7-7 7" />
+                            </svg>
+                            Submit Log
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <section class="debug-controls glass-panel">
+            <h3>Debug Controls</h3>
+            <div class="debug-buttons">
+                <button id="btn-debug-add-min" class="btn tool-btn">+1 Min</button>
+                <button id="btn-debug-add-hour" class="btn tool-btn">+1 Hour</button>
+                <button id="btn-debug-add-8hour" class="btn tool-btn">+8 Hours</button>
+                <button id="btn-debug-reset" class="btn tool-btn danger">Reset App</button>
+            </div>
+            <p class="debug-time-offset">Time Offset: <span id="time-offset-val">0</span> ms</p>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
