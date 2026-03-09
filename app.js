@@ -130,6 +130,7 @@ function logLastMeal(retroTimeMs) {
     appState.lastMealTime = timeToUse;
 
     if (appState.currentState === STATES.FASTING) {
+        appState.windowStartTime = timeToUse;
         appState.windowEndTime = timeToUse + DURATION_FASTING_MS;
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         const fastingEnd = timeToUse + DURATION_FASTING_MS;
@@ -148,7 +149,7 @@ function transitionToFasting() {
     const now = getCurrentTime();
     appState.currentState = STATES.FASTING;
     const baseStartTime = appState.lastMealTime ? appState.lastMealTime : appState.windowEndTime;
-    appState.windowStartTime = appState.windowEndTime;
+    appState.windowStartTime = baseStartTime;
     appState.windowEndTime = baseStartTime + DURATION_FASTING_MS;
     saveState();
     updateUI();
@@ -243,15 +244,9 @@ function updateUI() {
 
         elBtnLastMeal.classList.remove('hidden');
 
-        if (appState.lastMealTime) {
-            elBtnLastMeal.classList.add('logged');
-            elBtnLastMeal.textContent = "Last Meal Logged";
-            elBtnLastMeal.disabled = true;
-        } else {
-            elBtnLastMeal.classList.remove('logged');
-            elBtnLastMeal.textContent = "Log Last Meal";
-            elBtnLastMeal.disabled = false;
-        }
+        elBtnLastMeal.classList.remove('logged');
+        elBtnLastMeal.textContent = "Log Last Meal";
+        elBtnLastMeal.disabled = false;
     }
     else if (state === STATES.FASTING) {
         elCurrentStateTitle.textContent = "Fasting Window";

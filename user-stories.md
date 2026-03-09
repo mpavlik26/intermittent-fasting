@@ -1,0 +1,11 @@
+- General rules as the starting point:
+  - I will denote the user stories by identifier `US-<number>` to clearly point to the specific user stories
+  - It's necessary to follow the rules of the user stories not to break any of the existing functionality defined by previous user stories
+    - however it's logical some newer stories will change the behaviour of the previous ones
+      - it will be great if you identify those conflicts and explicitly address them for being able to resolve them correctly
+  - The current behavior of the application is based on the list of initial user stories (so called Phase 1 and Phase 2) I have not available here. We have to work with this fact and cannot break the current functionality unless explicitly agreed on it
+- New user stories:
+  - US-1:
+    - If the fasting window is shorten by n hours/minutes because the last meal in the eating window happened exactly by n hours/minutes before the end of the fasting window, the app will show the start of the fasting window as the time of the last meal and not the end of the fasting window. This is in conflict with the current behaviour and I like to change exactly this.
+  - US-2:
+    - As the user I want to be able to log last meal using "Log last meal" button repeatedly, so that I can log the last meal at any time as I don't know if the meal I already ate was the last one or not. The last meal is the really last meal logged (including those last meal logged using the retrospective logging).
