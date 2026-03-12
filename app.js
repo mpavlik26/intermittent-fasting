@@ -1,4 +1,5 @@
 // --- Constants ---
+console.log("APP_VERSION: US-3-READY");
 const STATES = {
     POTENTIAL_EATING: 'potential',
     EATING: 'eating',
@@ -14,6 +15,7 @@ let appState = {
     windowStartTime: null,
     windowEndTime: null,
     lastMealTime: null,
+    fastingBonusMs: 0,
     timeOffsetMs: 0
 };
 
@@ -36,6 +38,8 @@ const elBtnLastMeal = document.getElementById('btn-last-meal');
 const elMealTypeSelect = document.getElementById('meal-type-select');
 const elMealTimeInput = document.getElementById('meal-time-input');
 const elBtnSubmitLog = document.getElementById('btn-submit-log');
+const elBonusBadge = document.getElementById('bonus-badge');
+const elBonusText = document.getElementById('bonus-text');
 
 // --- Initialization ---
 function init() {
@@ -69,6 +73,7 @@ function resetState() {
         windowStartTime: null,
         windowEndTime: null,
         lastMealTime: null,
+        fastingBonusMs: 0,
         timeOffsetMs: 0
     };
     saveState();
@@ -117,9 +122,17 @@ function parseRetrospectiveTime(timeStr) {
 function transitionToEating(retroTimeMs) {
     // If called via standard event listener, it passes PointerEvent. We check if it's a number.
     const timeToUse = typeof retroTimeMs === 'number' ? retroTimeMs : getCurrentTime();
+
+    // US-3: Calculate bonus if fasting continued into potential eating window
+    let bonusMs = appState.fastingBonusMs; // Keep existing if already set (e.g. re-logging)
+    if (appState.currentState === STATES.POTENTIAL_EATING && appState.windowEndTime && timeToUse > appState.windowEndTime) {
+        bonusMs = Math.floor((timeToUse - appState.windowEndTime) / 2);
+    }
+
     appState.currentState = STATES.EATING;
     appState.windowStartTime = timeToUse;
-    appState.windowEndTime = timeToUse + DURATION_EATING_MS;
+    appState.fastingBonusMs = bonusMs;
+    appState.windowEndTime = timeToUse + DURATION_EATING_MS + bonusMs;
     appState.lastMealTime = null;
     saveState();
     updateUI();
@@ -151,14 +164,14 @@ function transitionToFasting() {
     const baseStartTime = appState.lastMealTime ? appState.lastMealTime : appState.windowEndTime;
     appState.windowStartTime = baseStartTime;
     appState.windowEndTime = baseStartTime + DURATION_FASTING_MS;
+    appState.fastingBonusMs = 0; // Reset bonus for new cycle
     saveState();
     updateUI();
 }
 
 function transitionToPotential() {
     appState.currentState = STATES.POTENTIAL_EATING;
-    appState.windowStartTime = null;
-    appState.windowEndTime = null;
+    // Keep windowStartTime and windowEndTime to calculate US-3 bonus later
     appState.lastMealTime = null;
     saveState();
     updateUI();
@@ -198,6 +211,20 @@ function tick() {
             transitionToPotential();
             return;
         }
+    } else if (appState.currentState === STATES.POTENTIAL_EATING) {
+        // US-3 Real-time feedback: Calculate pending bonus
+        if (appState.windowEndTime && now > appState.windowEndTime) {
+            const pendingBonusMs = Math.floor((now - appState.windowEndTime) / 2);
+            const bonusMins = Math.floor(pendingBonusMs / (60 * 1000));
+            if (bonusMins > 0) {
+                elBonusText.textContent = `+${bonusMins}m pending reward`;
+                elBonusBadge.classList.remove('hidden');
+            } else {
+                elBonusBadge.classList.add('hidden');
+            }
+        } else {
+            elBonusBadge.classList.add('hidden');
+        }
     }
 
     // Update timers
@@ -226,11 +253,23 @@ function updateUI() {
         elCurrentStateTitle.textContent = "Potential Eating Window";
         elStateDescription.textContent = "You can start your eating window when you are ready.";
         elBtnFirstMeal.classList.remove('hidden');
+        // elBonusBadge visibility handled by tick() for real-time updates
     }
     else if (state === STATES.EATING) {
         elCurrentStateTitle.textContent = "Eating Window";
 
         let desc = "You have 8 hours to consume your daily meals.";
+
+        // US-3 UI Feedback
+        if (appState.fastingBonusMs > 0) {
+            const bonusMins = Math.floor(appState.fastingBonusMs / (60 * 1000));
+            elBonusText.textContent = `+${bonusMins}m fasting bonus applied!`;
+            elBonusBadge.classList.remove('hidden');
+            desc = `You earned a ${bonusMins}m bonus for prolonged fasting! Total window: ${8 + Math.floor(bonusMins / 60)}h ${bonusMins % 60}m.`;
+        } else {
+            elBonusBadge.classList.add('hidden');
+        }
+
         if (appState.lastMealTime) {
             desc += ` Last meal logged at ${formatTimeOnly(appState.lastMealTime)}.`;
         }
@@ -254,6 +293,7 @@ function updateUI() {
 
         elTimerLabel.textContent = "Fasting Target Reached In";
         elTimerDisplay.classList.remove('hidden');
+        elBonusBadge.classList.add('hidden');
 
         elStartTimeVal.textContent = formatTimeOnly(appState.windowStartTime);
         elEndTimeVal.textContent = formatTimeOnly(appState.windowEndTime);
