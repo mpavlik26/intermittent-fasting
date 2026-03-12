@@ -16,6 +16,8 @@ let appState = {
     windowEndTime: null,
     lastMealTime: null,
     fastingBonusMs: 0,
+    eatingBonusMs: 0,
+    lastEatingWindowTargetMs: null,
     timeOffsetMs: 0
 };
 
@@ -55,7 +57,8 @@ function loadState() {
     const saved = localStorage.getItem('fastingTrackerState');
     if (saved) {
         try {
-            appState = JSON.parse(saved);
+            const parsed = JSON.parse(saved);
+            appState = { ...appState, ...parsed };
         } catch (e) {
             console.error('Failed to load state', e);
         }
@@ -74,6 +77,8 @@ function resetState() {
         windowEndTime: null,
         lastMealTime: null,
         fastingBonusMs: 0,
+        eatingBonusMs: 0,
+        lastEatingWindowTargetMs: null,
         timeOffsetMs: 0
     };
     saveState();
@@ -132,7 +137,10 @@ function transitionToEating(retroTimeMs) {
     appState.currentState = STATES.EATING;
     appState.windowStartTime = timeToUse;
     appState.fastingBonusMs = bonusMs;
-    appState.windowEndTime = timeToUse + DURATION_EATING_MS + bonusMs;
+    const targetEndTime = timeToUse + DURATION_EATING_MS + bonusMs;
+    appState.windowEndTime = targetEndTime;
+    appState.lastEatingWindowTargetMs = targetEndTime;
+    appState.eatingBonusMs = 0; // Reset for new window
     appState.lastMealTime = null;
     saveState();
     updateUI();
@@ -144,12 +152,15 @@ function logLastMeal(retroTimeMs) {
 
     if (appState.currentState === STATES.FASTING) {
         appState.windowStartTime = timeToUse;
-        appState.windowEndTime = timeToUse + DURATION_FASTING_MS;
+        appState.eatingBonusMs = calculateEatingBonus();
+        appState.windowEndTime = timeToUse + DURATION_FASTING_MS - appState.eatingBonusMs;
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
-        const fastingEnd = timeToUse + DURATION_FASTING_MS;
+        const eatingBonus = calculateEatingBonus();
+        const fastingEnd = timeToUse + DURATION_FASTING_MS - eatingBonus;
         if (getCurrentTime() < fastingEnd) {
             appState.currentState = STATES.FASTING;
-            appState.windowStartTime = timeToUse; // Approximate, user mainly cares about end
+            appState.windowStartTime = timeToUse;
+            appState.eatingBonusMs = eatingBonus;
             appState.windowEndTime = fastingEnd;
         }
     }
@@ -158,12 +169,33 @@ function logLastMeal(retroTimeMs) {
     updateUI();
 }
 
+function calculateEatingBonus() {
+    console.log("Calculating US-4 bonus...");
+    console.log("lastMealTime:", appState.lastMealTime ? formatTimeOnly(appState.lastMealTime) : 'null');
+    console.log("lastEatingWindowTargetMs:", appState.lastEatingWindowTargetMs ? formatTimeOnly(appState.lastEatingWindowTargetMs) : 'null');
+
+    if (appState.lastMealTime && appState.lastEatingWindowTargetMs && appState.lastMealTime < appState.lastEatingWindowTargetMs) {
+        const bonus = Math.floor((appState.lastEatingWindowTargetMs - appState.lastMealTime) / 2);
+        console.log("Bonus calculated (ms):", bonus);
+        return bonus;
+    }
+    console.log("No bonus calculated (0)");
+    return 0;
+}
+
 function transitionToFasting() {
+    console.log("Transitioning to FASTING...");
     const now = getCurrentTime();
     appState.currentState = STATES.FASTING;
     const baseStartTime = appState.lastMealTime ? appState.lastMealTime : appState.windowEndTime;
     appState.windowStartTime = baseStartTime;
-    appState.windowEndTime = baseStartTime + DURATION_FASTING_MS;
+
+    // US-4: Calculate reward for shorter eating window
+    appState.eatingBonusMs = calculateEatingBonus();
+    appState.windowEndTime = baseStartTime + DURATION_FASTING_MS - appState.eatingBonusMs;
+
+    console.log("Fasting windowEndTime set to:", formatTimeOnly(appState.windowEndTime));
+
     appState.fastingBonusMs = 0; // Reset bonus for new cycle
     saveState();
     updateUI();
@@ -272,6 +304,13 @@ function updateUI() {
 
         if (appState.lastMealTime) {
             desc += ` Last meal logged at ${formatTimeOnly(appState.lastMealTime)}.`;
+
+            // US-4 Real-time feedback in Eating state
+            const pendingEatingBonus = calculateEatingBonus();
+            if (pendingEatingBonus > 0) {
+                const bonusMins = Math.floor(pendingEatingBonus / (60 * 1000));
+                desc += ` (Will reward ${bonusMins}m shorter fast)`;
+            }
         }
         elStateDescription.textContent = desc;
 
@@ -293,10 +332,19 @@ function updateUI() {
 
         elTimerLabel.textContent = "Fasting Target Reached In";
         elTimerDisplay.classList.remove('hidden');
-        elBonusBadge.classList.add('hidden');
 
         elStartTimeVal.textContent = formatTimeOnly(appState.windowStartTime);
         elEndTimeVal.textContent = formatTimeOnly(appState.windowEndTime);
+
+        // US-4 UI Feedback
+        if (appState.eatingBonusMs > 0) {
+            const bonusMins = Math.floor(appState.eatingBonusMs / (60 * 1000));
+            elBonusText.textContent = `-${bonusMins}m fast reward applied!`;
+            elBonusBadge.classList.remove('hidden');
+            elStateDescription.textContent += ` Fast shortened by ${bonusMins}m because you finished eating earlier.`;
+        } else {
+            elBonusBadge.classList.add('hidden');
+        }
     }
 
 }
