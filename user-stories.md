@@ -1,11 +1,37 @@
-- General rules as the starting point:
-  - I will denote the user stories by identifier `US-<number>` to clearly point to the specific user stories
+- I want to create a web application that can be used to manage my Intermittent Fasting.
+- It will be created using agile methodology
+  - It means the stories will start from the most basic features and will be built incrementally.
   - It's necessary to follow the rules of the user stories not to break any of the existing functionality defined by previous user stories
     - however it's logical some newer stories will change the behaviour of the previous ones
       - it will be great if you identify those conflicts and explicitly address them for being able to resolve them correctly
-  - The current behavior of the application is based on the list of initial user stories (so called Phase 1 and Phase 2) I have not available here. We have to work with this fact and cannot break the current functionality unless explicitly agreed on it
-- New user stories:
-  - US-1:
-    - If the fasting window is shorten by n hours/minutes because the last meal in the eating window happened exactly by n hours/minutes before the end of the fasting window, the app will show the start of the fasting window as the time of the last meal and not the end of the fasting window. This is in conflict with the current behaviour and I like to change exactly this.
-  - US-2:
-    - As the user I want to be able to log last meal using "Log last meal" button repeatedly, so that I can log the last meal at any time as I don't know if the meal I already ate was the last one or not. The last meal is the really last meal logged (including those last meal logged using the retrospective logging).
+  - The first slice will have the following background and will contain the following user stories (Starting the 3rd slide I started to denote all user stories with `US-<story number>` identification. For being able to identify somehow also the stories in the 1st and the 2nd slice, those stories have `US-B<story-number>` as their identification (B here means "basic"))
+    - Background:
+      - only max 8 hours window to eat and min 16 hours window to fast
+      - at any time there's either eating window, potential eating window or fasting window
+      - potential eating window starts immediately after the previous fasting window ends. The length of the potential eating window is not set upfront (it finishes with the start time of the eating of the first meal as this occation actually means the start of the eating window taking 8 hours).
+    - User stories:
+      - US-B1:
+         - As a user who started eating in the potential eating window I want to set a time when I started eating of the first meal as this occation actually means the start of the eating window taking 8 hours.
+      - US-B2:
+        - As a user finished eating in the eating window I want to record a time when I finished eating of the last meal so this occation could influence the start of the following fasting window.
+      - US-B3:
+        - As a user I want to start the fasting window immediately after the eating window ends. The length of the fasting window is 16 hours minus the time I spent at the end of the eating window already fasting (time since the finishing of the last eating).
+      - US-B4:
+        - As a user I want to see the current time, whether I'm in the eating, potential eating or fasting window, when they started and when they end. As a user I want the eating window starts immediately after the fasting window ends. The length of the eating window is 8 hours.
+  - The second slice will have the following background and user stories:
+    - Background:
+      - it's not possible always to log the first and the last meal activity at the time when this events happen, but it's necessary to record those events retrospectively
+        - it can happen even at time when the window (potential eating, eating, fasting) is already different
+    - User story:
+      - US-B5:
+        - As a user I want to record the first and the last meal events no matter what the current window is. It's always time in the past (or the current one). It's enough to set the time without date. If the entered time is greater than the current one, it means it's the time from the previous date (e.g. I can log on Wednesday at 2:00 the first/last meal that happened at 22:00, what means it happened on Tuesday). The system has to take those inputs into account.
+  - The third slice will have the following background and user stories:
+    - Background:
+      - I just want to polish some glitches I noticed during usage of the current solution and introduce functionality of so called bonuses that I can get if my fasting behavior is better than defined
+    - User stories:
+      - US-1:
+        - If the fasting window is shorten by n hours/minutes because the last meal in the eating window happened exactly by n hours/minutes before the end of the fasting window, the app will show the start of the fasting window as the time of the last meal and not the end of the fasting window. This is in conflict with the current behaviour and I like to change exactly this.
+      - US-2:
+        - As the user I want to be able to log last meal using "Log last meal" button repeatedly, so that I can log the last meal at any time as I don't know if the meal I already ate was the last one or not. The last meal is the really last meal logged (including those last meal logged using the retrospective logging).
+      - US-3:
+        - As the user I want to be rewarded when the fasting continous also during the "Potential eating window". If the fasting is about n minutes longer (it's based on the first meal in the potential eating window taken) it prolongs the length of the potential eating window by n/2 minutes.
