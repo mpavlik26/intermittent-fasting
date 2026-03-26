@@ -48,3 +48,5 @@
             - when I'm in Eating window I would like to see when the folowing Fasting window ends if I eat nothing since:
               - my lastly logged meal
               - this moment (meaning if I log my last window now)
+      - US 6:
+         - As the user I'd like to have the area for entering retrospective data collapsed by default and expand it once I'd like to log there something. Once I enter it the area should collapse automatically. 
