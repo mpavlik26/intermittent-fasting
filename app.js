@@ -40,8 +40,18 @@ const elBtnLastMeal = document.getElementById('btn-last-meal');
 const elMealTypeSelect = document.getElementById('meal-type-select');
 const elMealTimeInput = document.getElementById('meal-time-input');
 const elBtnSubmitLog = document.getElementById('btn-submit-log');
-const elBonusBadge = document.getElementById('bonus-badge');
 const elBonusText = document.getElementById('bonus-text');
+const elBonusBadge = document.getElementById('bonus-badge');
+
+// US-5 DOM Elements
+const elForecastSection = document.getElementById('forecast-section');
+const elForecastPotentialContent = document.getElementById('forecast-potential-content');
+const elForecastEatingContent = document.getElementById('forecast-eating-content');
+const elForecastEatingEnd = document.getElementById('forecast-eating-end');
+const elForecastLastMealRow = document.getElementById('forecast-last-meal-row');
+const elForecastLastMealTime = document.getElementById('forecast-last-meal-time');
+const elForecastFastingEndLast = document.getElementById('forecast-fasting-end-last');
+const elForecastFastingEndNow = document.getElementById('forecast-fasting-end-now');
 
 // --- Initialization ---
 function init() {
@@ -170,16 +180,13 @@ function logLastMeal(retroTimeMs) {
 }
 
 function calculateEatingBonus() {
-    console.log("Calculating US-4 bonus...");
-    console.log("lastMealTime:", appState.lastMealTime ? formatTimeOnly(appState.lastMealTime) : 'null');
-    console.log("lastEatingWindowTargetMs:", appState.lastEatingWindowTargetMs ? formatTimeOnly(appState.lastEatingWindowTargetMs) : 'null');
+    return getEatingBonusForTime(appState.lastMealTime);
+}
 
-    if (appState.lastMealTime && appState.lastEatingWindowTargetMs && appState.lastMealTime < appState.lastEatingWindowTargetMs) {
-        const bonus = Math.floor((appState.lastEatingWindowTargetMs - appState.lastMealTime) / 2);
-        console.log("Bonus calculated (ms):", bonus);
-        return bonus;
+function getEatingBonusForTime(timeMs) {
+    if (timeMs && appState.lastEatingWindowTargetMs && timeMs < appState.lastEatingWindowTargetMs) {
+        return Math.floor((appState.lastEatingWindowTargetMs - timeMs) / 2);
     }
-    console.log("No bonus calculated (0)");
     return 0;
 }
 
@@ -232,12 +239,28 @@ function tick() {
     // Update main clock
     elCurrentTime.textContent = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // Transitions
+    // Transitions & US-5 Forecasts
     if (appState.currentState === STATES.EATING) {
         if (now >= appState.windowEndTime) {
             transitionToFasting();
             return;
         }
+
+        // US-5: Eating Window Forecast
+        if (appState.lastMealTime) {
+            elForecastLastMealRow.classList.remove('hidden');
+            elForecastLastMealTime.textContent = formatTimeOnly(appState.lastMealTime);
+            const bonusLastMeal = getEatingBonusForTime(appState.lastMealTime);
+            const forecastLast = appState.lastMealTime + DURATION_FASTING_MS - bonusLastMeal;
+            elForecastFastingEndLast.textContent = formatTimeOnly(forecastLast);
+        } else {
+            elForecastLastMealRow.classList.add('hidden');
+        }
+
+        const bonusNow = getEatingBonusForTime(now);
+        const forecastNow = now + DURATION_FASTING_MS - bonusNow;
+        elForecastFastingEndNow.textContent = formatTimeOnly(forecastNow);
+
     } else if (appState.currentState === STATES.FASTING) {
         if (now >= appState.windowEndTime) {
             transitionToPotential();
@@ -257,6 +280,13 @@ function tick() {
         } else {
             elBonusBadge.classList.add('hidden');
         }
+
+        // US-5: Potential Eating Forecast
+        const pendingBonusMs = (appState.windowEndTime && now > appState.windowEndTime)
+            ? Math.floor((now - appState.windowEndTime) / 2)
+            : 0;
+        const forecastedEatingEnd = now + DURATION_EATING_MS + pendingBonusMs;
+        elForecastEatingEnd.textContent = formatTimeOnly(forecastedEatingEnd);
     }
 
     // Update timers
@@ -286,6 +316,11 @@ function updateUI() {
         elStateDescription.textContent = "You can start your eating window when you are ready.";
         elBtnFirstMeal.classList.remove('hidden');
         // elBonusBadge visibility handled by tick() for real-time updates
+
+        // US-5: Update Forecast visibility
+        elForecastSection.classList.remove('hidden');
+        elForecastPotentialContent.classList.remove('hidden');
+        elForecastEatingContent.classList.add('hidden');
     }
     else if (state === STATES.EATING) {
         elCurrentStateTitle.textContent = "Eating Window";
@@ -325,6 +360,11 @@ function updateUI() {
         elBtnLastMeal.classList.remove('logged');
         elBtnLastMeal.textContent = "Log Last Meal";
         elBtnLastMeal.disabled = false;
+
+        // US-5: Update Forecast visibility
+        elForecastSection.classList.remove('hidden');
+        elForecastPotentialContent.classList.add('hidden');
+        elForecastEatingContent.classList.remove('hidden');
     }
     else if (state === STATES.FASTING) {
         elCurrentStateTitle.textContent = "Fasting Window";
@@ -345,6 +385,9 @@ function updateUI() {
         } else {
             elBonusBadge.classList.add('hidden');
         }
+
+        // US-5: Update Forecast visibility
+        elForecastSection.classList.add('hidden');
     }
 
 }

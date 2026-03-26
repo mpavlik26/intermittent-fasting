@@ -38,3 +38,13 @@
       - US-4:
         - As I love being rewarded when my fasting is longer than defined, I also want to be rewarded when my real eating window is shorter (and I didn't utilize it fully). The bonus is calculated as follows: if the eating window is shorter by n minutes than defined, the bonus is n/2 minutes. This bonus is not added, but the next fasting window can be then shortened by this bonus.
         - It's necessary to take into consideration the fact both bonuses (US-3 and US-4) can be combined. It means: Eg.: When the eating window is being prolonged by an hour to 9 hours (thanks to a fasting taking 2 more hours) and I then use just 8 hours from those 9 hours, I get the 30 minutes reward in terms of shortening the fasting window (it will be 15 hours 30 minutes in this case).
+  - The fourth slice will have the following background and user stories:
+    - Background:
+      - I want to polish the UI and user experience in this slice
+    - User stories:
+      - US 5:
+          - As the user in Potential eating window or Eating window I would like to see when the following window ends, what means:
+            - when I'm in Potential eating window I would like to see when the Eating window ends if it starts now
+            - when I'm in Eating window I would like to see when the folowing Fasting window ends if I eat nothing since:
+              - my lastly logged meal
+              - this moment (meaning if I log my last window now)
