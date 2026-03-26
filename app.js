@@ -53,6 +53,10 @@ const elForecastLastMealTime = document.getElementById('forecast-last-meal-time'
 const elForecastFastingEndLast = document.getElementById('forecast-fasting-end-last');
 const elForecastFastingEndNow = document.getElementById('forecast-fasting-end-now');
 
+// US-6 DOM Elements
+const elBtnToggleRetro = document.getElementById('btn-toggle-retro');
+const elRetroLogContent = document.getElementById('retro-log-content');
+
 // --- Initialization ---
 function init() {
     loadState();
@@ -229,7 +233,22 @@ function submitMealLog() {
     }
 
     elMealTimeInput.value = "";
+    toggleRetroLog(false); // US-6: Auto-collapse after submit
     tick(); // Fast-forward state if needed
+}
+
+function toggleRetroLog(forceValue) {
+    const isExpanded = typeof forceValue === 'boolean' ? forceValue : elRetroLogContent.classList.contains('collapsed');
+
+    if (isExpanded) {
+        elRetroLogContent.classList.remove('collapsed');
+        elBtnToggleRetro.classList.add('active');
+        elBtnToggleRetro.querySelector('.btn-text').textContent = "Close Retrospective Log";
+    } else {
+        elRetroLogContent.classList.add('collapsed');
+        elBtnToggleRetro.classList.remove('active');
+        elBtnToggleRetro.querySelector('.btn-text').textContent = "Add Retrospective Log";
+    }
 }
 
 // --- Ticker ---
@@ -399,6 +418,10 @@ function setupEventListeners() {
 
     if (elBtnSubmitLog) {
         elBtnSubmitLog.addEventListener('click', submitMealLog);
+    }
+
+    if (elBtnToggleRetro) {
+        elBtnToggleRetro.addEventListener('click', () => toggleRetroLog());
     }
 
     document.getElementById('btn-debug-add-min').addEventListener('click', () => addTimeOffset(60 * 1000));

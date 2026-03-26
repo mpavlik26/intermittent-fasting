@@ -91,22 +91,31 @@
                 </div>
 
                 <div class="manual-log-section">
-                    <h3 class="log-title">Retrospective Log</h3>
-                    <div class="log-controls">
-                        <select id="meal-type-select" class="dropdown-input" aria-label="Meal Type">
-                            <option value="first">First Meal</option>
-                            <option value="last">Last Meal</option>
-                        </select>
-                        <input type="time" id="meal-time-input" class="time-input" aria-label="Meal time">
-                        <button id="btn-submit-log" class="btn primary-btn">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M5 12h14" />
-                                <path d="m12 5 7 7-7 7" />
-                            </svg>
-                            Submit Log
-                        </button>
+                    <button id="btn-toggle-retro" class="btn secondary-btn toggle-btn">
+                        <span class="btn-text">Add Retrospective Log</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="chevron-icon">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div id="retro-log-content" class="log-content-wrapper collapsed">
+                        <div class="log-controls">
+                            <select id="meal-type-select" class="dropdown-input" aria-label="Meal Type">
+                                <option value="first">First Meal</option>
+                                <option value="last">Last Meal</option>
+                            </select>
+                            <input type="time" id="meal-time-input" class="time-input" aria-label="Meal time">
+                            <button id="btn-submit-log" class="btn primary-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M5 12h14" />
+                                    <path d="m12 5 7 7-7 7" />
+                                </svg>
+                                Submit Log
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
