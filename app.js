@@ -239,12 +239,28 @@ function tick() {
     // Update main clock
     elCurrentTime.textContent = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // Transitions
+    // Transitions & US-5 Forecasts
     if (appState.currentState === STATES.EATING) {
         if (now >= appState.windowEndTime) {
             transitionToFasting();
             return;
         }
+
+        // US-5: Eating Window Forecast
+        if (appState.lastMealTime) {
+            elForecastLastMealRow.classList.remove('hidden');
+            elForecastLastMealTime.textContent = formatTimeOnly(appState.lastMealTime);
+            const bonusLastMeal = getEatingBonusForTime(appState.lastMealTime);
+            const forecastLast = appState.lastMealTime + DURATION_FASTING_MS - bonusLastMeal;
+            elForecastFastingEndLast.textContent = formatTimeOnly(forecastLast);
+        } else {
+            elForecastLastMealRow.classList.add('hidden');
+        }
+
+        const bonusNow = getEatingBonusForTime(now);
+        const forecastNow = now + DURATION_FASTING_MS - bonusNow;
+        elForecastFastingEndNow.textContent = formatTimeOnly(forecastNow);
+
     } else if (appState.currentState === STATES.FASTING) {
         if (now >= appState.windowEndTime) {
             transitionToPotential();
@@ -271,22 +287,6 @@ function tick() {
             : 0;
         const forecastedEatingEnd = now + DURATION_EATING_MS + pendingBonusMs;
         elForecastEatingEnd.textContent = formatTimeOnly(forecastedEatingEnd);
-
-    } else if (appState.currentState === STATES.EATING) {
-        // US-5: Eating Window Forecast
-        if (appState.lastMealTime) {
-            elForecastLastMealRow.classList.remove('hidden');
-            elForecastLastMealTime.textContent = formatTimeOnly(appState.lastMealTime);
-            const bonusLastMeal = getEatingBonusForTime(appState.lastMealTime);
-            const forecastLast = appState.lastMealTime + DURATION_FASTING_MS - bonusLastMeal;
-            elForecastFastingEndLast.textContent = formatTimeOnly(forecastLast);
-        } else {
-            elForecastLastMealRow.classList.add('hidden');
-        }
-
-        const bonusNow = getEatingBonusForTime(now);
-        const forecastNow = now + DURATION_FASTING_MS - bonusNow;
-        elForecastFastingEndNow.textContent = formatTimeOnly(forecastNow);
     }
 
     // Update timers
