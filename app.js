@@ -17,6 +17,7 @@ let appState = {
     lastMealTime: null,
     fastingBonusMs: 0,
     eatingBonusMs: 0,
+    fastingPenaltyMs: 0, // US-7: Accumulated penalty for next fasting
     lastEatingWindowTargetMs: null,
     timeOffsetMs: 0
 };
@@ -57,6 +58,13 @@ const elForecastFastingEndNow = document.getElementById('forecast-fasting-end-no
 const elBtnToggleRetro = document.getElementById('btn-toggle-retro');
 const elRetroLogContent = document.getElementById('retro-log-content');
 
+// US-7 DOM Elements
+const elBreakFastSection = document.getElementById('break-fast-section');
+const elBtnToggleBreakFast = document.getElementById('btn-toggle-break-fast');
+const elBreakFastContent = document.getElementById('break-fast-content');
+const elBtnBreakProlong = document.getElementById('btn-break-prolong');
+const elBtnBreakPremature = document.getElementById('btn-break-premature');
+
 // --- Initialization ---
 function init() {
     loadState();
@@ -92,6 +100,7 @@ function resetState() {
         lastMealTime: null,
         fastingBonusMs: 0,
         eatingBonusMs: 0,
+        fastingPenaltyMs: 0,
         lastEatingWindowTargetMs: null,
         timeOffsetMs: 0
     };
@@ -104,10 +113,25 @@ function getCurrentTime() {
     return Date.now() + appState.timeOffsetMs;
 }
 
-function formatTimeOnly(timestamp) {
+function formatTimeOnly(timestamp, relativeTo) {
     if (!timestamp) return '--:--';
     const d = new Date(timestamp);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    let timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (relativeTo) {
+        const start = new Date(relativeTo);
+        const end = new Date(timestamp);
+
+        // Normalize to midnight to count full days
+        const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+        const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+        const diffDays = Math.round((endDay - startDay) / (24 * 60 * 60 * 1000));
+        if (diffDays > 0) {
+            timeStr += ` (+${diffDays * 24}h)`;
+        }
+    }
+    return timeStr;
 }
 
 function formatDuration(ms) {
@@ -160,6 +184,36 @@ function transitionToEating(retroTimeMs) {
     updateUI();
 }
 
+function prolongEatingAndStartFast() {
+    const now = getCurrentTime();
+    const originalStart = appState.windowStartTime;
+    const baseDuration = appState.windowEndTime - originalStart;
+    const penaltyMs = 2 * (now - originalStart);
+
+    appState.currentState = STATES.FASTING;
+    appState.windowStartTime = now;
+    appState.windowEndTime = now + baseDuration + penaltyMs;
+    // We don't change lastEatingWindowTargetMs here as the eating window "effectively" ended at now
+    appState.lastMealTime = now;
+    appState.fastingBonusMs = 0; // Reset bonus for this cycle
+
+    saveState();
+    updateUI();
+    toggleBreakFastLog(false);
+}
+
+function startEatingPrematurely() {
+    const now = getCurrentTime();
+    const originalEnd = appState.windowEndTime;
+    const penaltyMs = 4 * (originalEnd - now);
+
+    appState.fastingPenaltyMs = penaltyMs;
+
+    // Transition to eating normally but with the penalty stored
+    transitionToEating(now);
+    toggleBreakFastLog(false);
+}
+
 function logLastMeal(retroTimeMs) {
     const timeToUse = typeof retroTimeMs === 'number' ? retroTimeMs : getCurrentTime();
     appState.lastMealTime = timeToUse;
@@ -203,11 +257,16 @@ function transitionToFasting() {
 
     // US-4: Calculate reward for shorter eating window
     appState.eatingBonusMs = calculateEatingBonus();
-    appState.windowEndTime = baseStartTime + DURATION_FASTING_MS - appState.eatingBonusMs;
 
-    console.log("Fasting windowEndTime set to:", formatTimeOnly(appState.windowEndTime));
+    // US-7: Apply penalty from previous cycle if any
+    const penalty = appState.fastingPenaltyMs || 0;
+
+    appState.windowEndTime = baseStartTime + DURATION_FASTING_MS - appState.eatingBonusMs + penalty;
+
+    console.log("Fasting windowEndTime set to:", formatTimeOnly(appState.windowEndTime, baseStartTime));
 
     appState.fastingBonusMs = 0; // Reset bonus for new cycle
+    appState.fastingPenaltyMs = 0; // Reset penalty once applied
     saveState();
     updateUI();
 }
@@ -238,6 +297,7 @@ function submitMealLog() {
 }
 
 function toggleRetroLog(forceValue) {
+    if (!elRetroLogContent) return;
     const isExpanded = typeof forceValue === 'boolean' ? forceValue : elRetroLogContent.classList.contains('collapsed');
 
     if (isExpanded) {
@@ -248,6 +308,21 @@ function toggleRetroLog(forceValue) {
         elRetroLogContent.classList.add('collapsed');
         elBtnToggleRetro.classList.remove('active');
         elBtnToggleRetro.querySelector('.btn-text').textContent = "Add Retrospective Log";
+    }
+}
+
+function toggleBreakFastLog(forceValue) {
+    if (!elBreakFastContent) return;
+    const isExpanded = typeof forceValue === 'boolean' ? forceValue : elBreakFastContent.classList.contains('collapsed');
+
+    if (isExpanded) {
+        elBreakFastContent.classList.remove('collapsed');
+        elBtnToggleBreakFast.classList.add('active');
+        elBtnToggleBreakFast.querySelector('.btn-text').textContent = "Close Break Fast Menu";
+    } else {
+        elBreakFastContent.classList.add('collapsed');
+        elBtnToggleBreakFast.classList.remove('active');
+        elBtnToggleBreakFast.querySelector('.btn-text').textContent = "Break Fast Prematurely";
     }
 }
 
@@ -268,17 +343,20 @@ function tick() {
         // US-5: Eating Window Forecast
         if (appState.lastMealTime) {
             elForecastLastMealRow.classList.remove('hidden');
-            elForecastLastMealTime.textContent = formatTimeOnly(appState.lastMealTime);
+            elForecastLastMealTime.textContent = formatTimeOnly(appState.lastMealTime, appState.windowStartTime);
             const bonusLastMeal = getEatingBonusForTime(appState.lastMealTime);
-            const forecastLast = appState.lastMealTime + DURATION_FASTING_MS - bonusLastMeal;
-            elForecastFastingEndLast.textContent = formatTimeOnly(forecastLast);
+            // US-7: Predicted fasting end includes current penalty if any!
+            const penalty = appState.fastingPenaltyMs || 0;
+            const forecastLast = appState.lastMealTime + DURATION_FASTING_MS - bonusLastMeal + penalty;
+            elForecastFastingEndLast.textContent = formatTimeOnly(forecastLast, appState.lastMealTime);
         } else {
             elForecastLastMealRow.classList.add('hidden');
         }
 
         const bonusNow = getEatingBonusForTime(now);
-        const forecastNow = now + DURATION_FASTING_MS - bonusNow;
-        elForecastFastingEndNow.textContent = formatTimeOnly(forecastNow);
+        const penalty = appState.fastingPenaltyMs || 0;
+        const forecastNow = now + DURATION_FASTING_MS - bonusNow + penalty;
+        elForecastFastingEndNow.textContent = formatTimeOnly(forecastNow, now);
 
     } else if (appState.currentState === STATES.FASTING) {
         if (now >= appState.windowEndTime) {
@@ -305,7 +383,7 @@ function tick() {
             ? Math.floor((now - appState.windowEndTime) / 2)
             : 0;
         const forecastedEatingEnd = now + DURATION_EATING_MS + pendingBonusMs;
-        elForecastEatingEnd.textContent = formatTimeOnly(forecastedEatingEnd);
+        elForecastEatingEnd.textContent = formatTimeOnly(forecastedEatingEnd, now);
     }
 
     // Update timers
@@ -329,6 +407,7 @@ function updateUI() {
     elTimerDisplay.classList.add('hidden');
     elBtnFirstMeal.classList.add('hidden');
     elBtnLastMeal.classList.add('hidden');
+    elBreakFastSection.classList.add('hidden');
 
     if (state === STATES.POTENTIAL_EATING) {
         elCurrentStateTitle.textContent = "Potential Eating Window";
@@ -357,7 +436,7 @@ function updateUI() {
         }
 
         if (appState.lastMealTime) {
-            desc += ` Last meal logged at ${formatTimeOnly(appState.lastMealTime)}.`;
+            desc += ` Last meal logged at ${formatTimeOnly(appState.lastMealTime, appState.windowStartTime)}.`;
 
             // US-4 Real-time feedback in Eating state
             const pendingEatingBonus = calculateEatingBonus();
@@ -372,7 +451,7 @@ function updateUI() {
         elTimerDisplay.classList.remove('hidden');
 
         elStartTimeVal.textContent = formatTimeOnly(appState.windowStartTime);
-        elEndTimeVal.textContent = formatTimeOnly(appState.windowEndTime);
+        elEndTimeVal.textContent = formatTimeOnly(appState.windowEndTime, appState.windowStartTime);
 
         elBtnLastMeal.classList.remove('hidden');
 
@@ -393,7 +472,7 @@ function updateUI() {
         elTimerDisplay.classList.remove('hidden');
 
         elStartTimeVal.textContent = formatTimeOnly(appState.windowStartTime);
-        elEndTimeVal.textContent = formatTimeOnly(appState.windowEndTime);
+        elEndTimeVal.textContent = formatTimeOnly(appState.windowEndTime, appState.windowStartTime);
 
         // US-4 UI Feedback
         if (appState.eatingBonusMs > 0) {
@@ -407,8 +486,10 @@ function updateUI() {
 
         // US-5: Update Forecast visibility
         elForecastSection.classList.add('hidden');
-    }
 
+        // US-7: Show punishment section
+        elBreakFastSection.classList.remove('hidden');
+    }
 }
 
 // --- Event Listeners ---
@@ -422,6 +503,18 @@ function setupEventListeners() {
 
     if (elBtnToggleRetro) {
         elBtnToggleRetro.addEventListener('click', () => toggleRetroLog());
+    }
+
+    if (elBtnToggleBreakFast) {
+        elBtnToggleBreakFast.addEventListener('click', () => toggleBreakFastLog());
+    }
+
+    if (elBtnBreakProlong) {
+        elBtnBreakProlong.addEventListener('click', prolongEatingAndStartFast);
+    }
+
+    if (elBtnBreakPremature) {
+        elBtnBreakPremature.addEventListener('click', startEatingPrematurely);
     }
 
     document.getElementById('btn-debug-add-min').addEventListener('click', () => addTimeOffset(60 * 1000));
