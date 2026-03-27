@@ -49,4 +49,21 @@
               - my lastly logged meal
               - this moment (meaning if I log my last window now)
       - US 6:
-         - As the user I'd like to have the area for entering retrospective data collapsed by default and expand it once I'd like to log there something. Once I enter it the area should collapse automatically. 
+         - As the user I'd like to have the area for entering retrospective data collapsed by default and expand it once I'd like to log there something. Once I enter it the area should collapse automatically.
+  - The fifth slice will have the following background and user stories:
+    - Background:
+      - I want to enable the ability to eat even when I'm in fasting window. As this is something what I, as someone who should follow the intermittent fasting rules, should avoid, there will be a "punishment" for this influencing the length of the prematurely started the eating window and potentially also the length of the following fasting window
+    - User stories:
+       - US 7:
+         - As the user in Fasting window it can happen I have to eat even when I'm in fasting window. That's why I have to have the option to log this first meal of the prematurely started eating window. But as this is something what I should avoid this option should be collapsed by default. Once it's expanded I can choose whether:
+           1. I want to prolong the previous Eating window till now and log the current time as the last meal eaten and start the Fasting window immediately (I'll call this case "prolonging previous Eating window"); or
+           2. I want to start the Eating window prematurely and take the current time as the time of the first meal in the Eating window (I'll call this case "premature start of the next Eating window")
+         - There is always a "punishment" for the usage of this feature for the user:
+           - If I choose "prolonging previous Eating window" till now and have the current time as the time of the last meal, then the start of the current Fasting window is shifted to the current time and it's length is the sum of the original Fasting window length + the doubled time between the original start of the current Fasting window and the current time
+             - example: if the current Fasting window starts at 4:00 and should end at 18:00 (there's 2 hours bonus shortening and thus its length is not 16 hours, but just 14) and I choose the option to use "prolonging previous Eating window" and now it's 6:00, it means I should get the 2 * 120 mins = 240 mins penalty what means the current Fasting window will start now (at 6:00) and will finish not in 14 hours (as it was originally (using the bonus shortening)), but in 18 hours, what means at midnight.
+           - If I choose "premature start of the next Eating window" since now and have the current time as the time of the first meal in the new Eating window, the lenght of that Eating window is not shortened, but the penalty will apply on the next Fasting window that will be longer by the 4 * n minutes where n is the amount of minutes between now and the original end of the current Fasting window.
+             - example: if the current Fasting window starts at 4:00 and should end at 18:00 (there's 2 hours bonus shortening and thus its length is not 16 hours, but just 14) and I choose the option to use "premature start of the next Eating window" and now it's 16:00, it means I should get the 4 * 120 mins = 480 mins penalty applied to the next Fasting window what means the Eating window starts immediatelly now at 16:00, will finish at midnight and the next Fasting window will take 16 hours + 8 hours penalty = 24 hours so it will finish at the next midnight
+         - As thanks to the penalties system it can easily happen the Fasting window will be longer than 24 hours, it's necessary to display the information that the displayed time is not the nearest that time, but +24 hours
+           - example: if there's Tuesday 22:00 and it's the time when the 32-hours long fasting window starts (thanks to some huge penalty) I'd like to see somehow the end of the fasting window is not just at 6:00, but 6:00 + 24 hours. And I need to see this information also at the prediction sections (US-5 user stories)
+         
+    
