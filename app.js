@@ -1,5 +1,5 @@
 // --- Constants ---
-console.log("APP_VERSION: US-7-PENALTY-FIX-1");
+console.log("APP_VERSION: US-7-FINAL");
 const STATES = {
     POTENTIAL_EATING: 'potential',
     EATING: 'eating',
@@ -269,13 +269,6 @@ function transitionToFasting() {
     const duration = DURATION_FASTING_MS + penalty - bonus;
 
     appState.windowEndTime = baseStartTime + duration;
-
-    console.log("Next Fasting Window Debug:");
-    console.log(" - Start Time:", formatTimeOnly(baseStartTime));
-    console.log(" - Base Duration:", formatDuration(DURATION_FASTING_MS));
-    console.log(" - Penalty:", formatDuration(penalty));
-    console.log(" - Bonus:", formatDuration(bonus));
-    console.log(" - Final End Time:", formatTimeOnly(appState.windowEndTime, baseStartTime));
 
     appState.fastingBonusMs = 0; // Reset bonus for new cycle
     appState.fastingPenaltyMs = 0; // Reset penalty once applied
