@@ -1,5 +1,5 @@
 // --- Constants ---
-console.log("APP_VERSION: US-3-READY");
+console.log("APP_VERSION: US-7-PENALTY-FIX-1");
 const STATES = {
     POTENTIAL_EATING: 'potential',
     EATING: 'eating',
@@ -186,14 +186,15 @@ function transitionToEating(retroTimeMs) {
 
 function prolongEatingAndStartFast() {
     const now = getCurrentTime();
-    const originalStart = appState.windowStartTime;
-    const baseDuration = appState.windowEndTime - originalStart;
-    const penaltyMs = 2 * (now - originalStart);
+    // US-7a: Penalty is based on now - lastEatingWindowTargetMs
+    // and early finish bonus is discarded
+    const targetEnd = appState.lastEatingWindowTargetMs || (appState.windowStartTime + DURATION_EATING_MS);
+    const penaltyMs = 2 * Math.max(0, now - targetEnd);
 
     appState.currentState = STATES.FASTING;
     appState.windowStartTime = now;
-    appState.windowEndTime = now + baseDuration + penaltyMs;
-    // We don't change lastEatingWindowTargetMs here as the eating window "effectively" ended at now
+    appState.windowEndTime = now + DURATION_FASTING_MS + penaltyMs;
+    appState.eatingBonusMs = 0; // Discard early finish bonus
     appState.lastMealTime = now;
     appState.fastingBonusMs = 0; // Reset bonus for this cycle
 
@@ -221,15 +222,19 @@ function logLastMeal(retroTimeMs) {
     if (appState.currentState === STATES.FASTING) {
         appState.windowStartTime = timeToUse;
         appState.eatingBonusMs = calculateEatingBonus();
-        appState.windowEndTime = timeToUse + DURATION_FASTING_MS - appState.eatingBonusMs;
+        const penalty = appState.fastingPenaltyMs || 0;
+        appState.windowEndTime = timeToUse + DURATION_FASTING_MS - appState.eatingBonusMs + penalty;
+        appState.fastingPenaltyMs = 0; // Reset if applied
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         const eatingBonus = calculateEatingBonus();
-        const fastingEnd = timeToUse + DURATION_FASTING_MS - eatingBonus;
+        const penalty = appState.fastingPenaltyMs || 0;
+        const fastingEnd = timeToUse + DURATION_FASTING_MS - eatingBonus + penalty;
         if (getCurrentTime() < fastingEnd) {
             appState.currentState = STATES.FASTING;
             appState.windowStartTime = timeToUse;
             appState.eatingBonusMs = eatingBonus;
             appState.windowEndTime = fastingEnd;
+            appState.fastingPenaltyMs = 0; // Reset if applied
         }
     }
 
@@ -260,10 +265,17 @@ function transitionToFasting() {
 
     // US-7: Apply penalty from previous cycle if any
     const penalty = appState.fastingPenaltyMs || 0;
+    const bonus = appState.eatingBonusMs || 0;
+    const duration = DURATION_FASTING_MS + penalty - bonus;
 
-    appState.windowEndTime = baseStartTime + DURATION_FASTING_MS - appState.eatingBonusMs + penalty;
+    appState.windowEndTime = baseStartTime + duration;
 
-    console.log("Fasting windowEndTime set to:", formatTimeOnly(appState.windowEndTime, baseStartTime));
+    console.log("Next Fasting Window Debug:");
+    console.log(" - Start Time:", formatTimeOnly(baseStartTime));
+    console.log(" - Base Duration:", formatDuration(DURATION_FASTING_MS));
+    console.log(" - Penalty:", formatDuration(penalty));
+    console.log(" - Bonus:", formatDuration(bonus));
+    console.log(" - Final End Time:", formatTimeOnly(appState.windowEndTime, baseStartTime));
 
     appState.fastingBonusMs = 0; // Reset bonus for new cycle
     appState.fastingPenaltyMs = 0; // Reset penalty once applied
@@ -341,21 +353,21 @@ function tick() {
         }
 
         // US-5: Eating Window Forecast
+        const penalty = appState.fastingPenaltyMs || 0;
+
         if (appState.lastMealTime) {
             elForecastLastMealRow.classList.remove('hidden');
             elForecastLastMealTime.textContent = formatTimeOnly(appState.lastMealTime, appState.windowStartTime);
+            
             const bonusLastMeal = getEatingBonusForTime(appState.lastMealTime);
-            // US-7: Predicted fasting end includes current penalty if any!
-            const penalty = appState.fastingPenaltyMs || 0;
-            const forecastLast = appState.lastMealTime + DURATION_FASTING_MS - bonusLastMeal + penalty;
+            const forecastLast = appState.lastMealTime + DURATION_FASTING_MS + penalty - bonusLastMeal;
             elForecastFastingEndLast.textContent = formatTimeOnly(forecastLast, appState.lastMealTime);
         } else {
             elForecastLastMealRow.classList.add('hidden');
         }
 
         const bonusNow = getEatingBonusForTime(now);
-        const penalty = appState.fastingPenaltyMs || 0;
-        const forecastNow = now + DURATION_FASTING_MS - bonusNow + penalty;
+        const forecastNow = now + DURATION_FASTING_MS + penalty - bonusNow;
         elForecastFastingEndNow.textContent = formatTimeOnly(forecastNow, now);
 
     } else if (appState.currentState === STATES.FASTING) {
