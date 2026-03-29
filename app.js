@@ -199,9 +199,13 @@ function prolongEatingAndStartFast() {
     const targetEnd = appState.lastEatingWindowTargetMs || (appState.windowStartTime + DURATION_EATING_MS);
     const penaltyMs = 2 * Math.max(0, now - targetEnd);
 
+    // US-7b: Penalty is cumulative
+    const totalPenalty = appState.appliedPenaltyMs + penaltyMs;
+
     appState.currentState = STATES.FASTING;
     appState.windowStartTime = now;
-    appState.windowEndTime = now + DURATION_FASTING_MS + penaltyMs;
+    appState.windowEndTime = now + DURATION_FASTING_MS + totalPenalty;
+    appState.appliedPenaltyMs = totalPenalty; // US-8: Show badge immediately
     appState.eatingBonusMs = 0; // Discard early finish bonus
     appState.lastMealTime = now;
     appState.fastingBonusMs = 0; // Reset bonus for this cycle
@@ -216,7 +220,7 @@ function startEatingPrematurely() {
     const originalEnd = appState.windowEndTime;
     const penaltyMs = 4 * (originalEnd - now);
 
-    appState.fastingPenaltyMs = penaltyMs;
+    appState.fastingPenaltyMs += penaltyMs; // US-7b: Cumulative penalty
 
     // Transition to eating normally but with the penalty stored
     transitionToEating(now);
@@ -289,6 +293,9 @@ function transitionToPotential() {
     appState.currentState = STATES.POTENTIAL_EATING;
     // Keep windowStartTime and windowEndTime to calculate US-3 bonus later
     appState.lastMealTime = null;
+    // US-7b: Penalties are reset on successful fast completion
+    appState.appliedPenaltyMs = 0;
+    appState.fastingPenaltyMs = 0;
     saveState();
     updateUI();
 }
@@ -378,20 +385,21 @@ function tick() {
             return;
         }
 
-        // US-8: Real-time predictions for breaking fast
-        if (!elBreakFastContent.classList.contains('collapsed')) {
+            // US-8: Prediction logic assumes pre-existing penalties must remain (US-7b)
+            const currentPenalty = appState.appliedPenaltyMs;
+
             // Option 1 Prediction
             const targetEnd = appState.lastEatingWindowTargetMs || (appState.windowStartTime + DURATION_EATING_MS);
             const penalty1 = 2 * Math.max(0, now - targetEnd);
-            const forecast1 = now + DURATION_FASTING_MS + penalty1;
+            const forecast1 = now + DURATION_FASTING_MS + currentPenalty + penalty1;
             elBreakProlongEnd.textContent = formatTimeOnly(forecast1, now);
 
             // Option 2 Prediction
+            const nextPenaltyBase = appState.fastingPenaltyMs;
             const n = appState.windowEndTime - now;
             const penalty2 = 4 * n;
-            const forecast2 = now + DURATION_EATING_MS + DURATION_FASTING_MS + penalty2;
+            const forecast2 = now + DURATION_EATING_MS + DURATION_FASTING_MS + nextPenaltyBase + penalty2;
             elBreakPrematureEnd.textContent = formatTimeOnly(forecast2, now);
-        }
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         // US-3 Real-time feedback: Calculate pending bonus
         if (appState.windowEndTime && now > appState.windowEndTime) {
