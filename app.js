@@ -17,7 +17,8 @@ let appState = {
     lastMealTime: null,
     fastingBonusMs: 0,
     eatingBonusMs: 0,
-    fastingPenaltyMs: 0, // US-7: Accumulated penalty for next fasting
+    fastingPenaltyMs: 0, // Penalty for the NEXT fasting window
+    appliedPenaltyMs: 0, // US-8: Penalty applied to the CURRENT fasting window
     lastEatingWindowTargetMs: null,
     timeOffsetMs: 0
 };
@@ -65,6 +66,12 @@ const elBreakFastContent = document.getElementById('break-fast-content');
 const elBtnBreakProlong = document.getElementById('btn-break-prolong');
 const elBtnBreakPremature = document.getElementById('btn-break-premature');
 
+// US-8 DOM Elements
+const elPenaltyBadge = document.getElementById('penalty-badge');
+const elPenaltyText = document.getElementById('penalty-text');
+const elBreakProlongEnd = document.getElementById('break-prolong-end');
+const elBreakPrematureEnd = document.getElementById('break-premature-end');
+
 // --- Initialization ---
 function init() {
     loadState();
@@ -101,6 +108,7 @@ function resetState() {
         fastingBonusMs: 0,
         eatingBonusMs: 0,
         fastingPenaltyMs: 0,
+        appliedPenaltyMs: 0,
         lastEatingWindowTargetMs: null,
         timeOffsetMs: 0
     };
@@ -269,6 +277,7 @@ function transitionToFasting() {
     const duration = DURATION_FASTING_MS + penalty - bonus;
 
     appState.windowEndTime = baseStartTime + duration;
+    appState.appliedPenaltyMs = penalty; // Keep track for US-8 badge
 
     appState.fastingBonusMs = 0; // Reset bonus for new cycle
     appState.fastingPenaltyMs = 0; // Reset penalty once applied
@@ -367,6 +376,21 @@ function tick() {
         if (now >= appState.windowEndTime) {
             transitionToPotential();
             return;
+        }
+
+        // US-8: Real-time predictions for breaking fast
+        if (!elBreakFastContent.classList.contains('collapsed')) {
+            // Option 1 Prediction
+            const targetEnd = appState.lastEatingWindowTargetMs || (appState.windowStartTime + DURATION_EATING_MS);
+            const penalty1 = 2 * Math.max(0, now - targetEnd);
+            const forecast1 = now + DURATION_FASTING_MS + penalty1;
+            elBreakProlongEnd.textContent = formatTimeOnly(forecast1, now);
+
+            // Option 2 Prediction
+            const n = appState.windowEndTime - now;
+            const penalty2 = 4 * n;
+            const forecast2 = now + DURATION_EATING_MS + DURATION_FASTING_MS + penalty2;
+            elBreakPrematureEnd.textContent = formatTimeOnly(forecast2, now);
         }
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         // US-3 Real-time feedback: Calculate pending bonus
@@ -487,6 +511,15 @@ function updateUI() {
             elStateDescription.textContent += ` Fast shortened by ${bonusMins}m because you finished eating earlier.`;
         } else {
             elBonusBadge.classList.add('hidden');
+        }
+
+        // US-8 Penalty Badge
+        if (appState.appliedPenaltyMs > 0) {
+            const penaltyMins = Math.floor(appState.appliedPenaltyMs / (60 * 1000));
+            elPenaltyText.textContent = `+${penaltyMins}m penalty applied!`;
+            elPenaltyBadge.classList.remove('hidden');
+        } else {
+            elPenaltyBadge.classList.add('hidden');
         }
 
         // US-5: Update Forecast visibility

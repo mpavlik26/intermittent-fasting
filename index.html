@@ -60,6 +60,28 @@
                     <button id="btn-last-meal" class="btn primary-btn hidden">Log Last Meal</button>
                 </div>
 
+                <div class="badges-container" style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem;">
+                    <div id="bonus-badge" class="badge bonus-badge hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 16 12 12 12 8"></polyline>
+                            <line x1="12" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                        <span id="bonus-text"></span>
+                    </div>
+
+                    <div id="penalty-badge" class="badge penalty-badge hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                            <path d="M12 9v4"></path>
+                            <path d="M12 17h.01"></path>
+                        </svg>
+                        <span id="penalty-text"></span>
+                    </div>
+                </div>
+
                 <!-- US-5: Forecast Section -->
                 <div id="forecast-section" class="forecast-section hidden">
                     <div class="forecast-header">
@@ -104,15 +126,17 @@
                         <div class="punishment-options">
                             <div class="punishment-card">
                                 <h4>Option 1: Prolong Eating</h4>
-                                <p>Extends previous eating window from its target end to now. <strong>2x penalty</strong>
-                                    added to current fast. Early bonuses are discarded.</p>
+                                <p>Use it if you've just finished eating and want to extend the previous eating window.
+                                    Early bonuses are discarded and the fasting window will end at: <strong
+                                        id="break-prolong-end">--:--</strong></p>
                                 <button id="btn-break-prolong" class="btn primary-btn btn-sm">Prolong & Start
                                     Fast</button>
                             </div>
                             <div class="punishment-card">
                                 <h4>Option 2: Premature Start</h4>
-                                <p>Starts next eating window immediately. <strong>4x penalty</strong> added to
-                                    <em>next</em> fast.</p>
+                                <p>Use it if you want to start the next eating window immediately. A penalty will apply
+                                    to the next fast, which will then end at: <strong
+                                        id="break-premature-end">--:--</strong></p>
                                 <button id="btn-break-premature" class="btn primary-btn btn-sm">Start Eating Now</button>
                             </div>
                         </div>
@@ -134,6 +158,7 @@
                                 <option value="first">First Meal</option>
                                 <option value="last">Last Meal</option>
                             </select>
+                            <input type="time" id="meal-time-input" class="time-input" aria-label="Meal time">
                             <input type="time" id="meal-time-input" class="time-input" aria-label="Meal time">
                             <button id="btn-submit-log" class="btn primary-btn">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
