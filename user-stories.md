@@ -49,4 +49,74 @@
               - my lastly logged meal
               - this moment (meaning if I log my last window now)
       - US 6:
-         - As the user I'd like to have the area for entering retrospective data collapsed by default and expand it once I'd like to log there something. Once I enter it the area should collapse automatically. 
+         - As the user I'd like to have the area for entering retrospective data collapsed by default and expand it once I'd like to log there something. Once I enter it the area should collapse automatically.
+   - The fifth slice will have the following background and user stories:
+     - Background:
+       - I want to enable the ability to eat even when I'm in fasting window. As this is something what I, as someone who should follow the intermittent fasting rules, should avoid, there will be a "punishment" for this.
+    - User stories:
+       - US 7:
+         - As the user in Fasting window it can happen I have to eat even when I'm in fasting window. I have basically two options:
+           - 1. "prolonging previous Eating window"
+           - 2. "premature start of the next Eating window"
+         - Those 2 options are available just when I'm in the Fasting window. As this is actually the breaking of the fasting rules, there should be a special section for this purpose and this section is collapsed by default and it's expanded only when I want to break the fasting rule (and then I can choose which of those 2 options would I like to use) and than it's collapsed back.
+         - If use the "prolonging previous Eating window", it has the following consequences:
+           - I'll get "penalty 1" that's equal to 2 * <minutes between the end of the previous Eating window and now>
+             - it's based on the time when the previous Eating window ends and not the starting time of the current Fasting window as the penalty would be much higher in case when I finished the Eating window prematurely and that wouldn't be correct
+           - The current Fasting window is restarted in the following way:
+             - The starting time of the Fasting window is set to the current time
+             - The possible bonuses are discarded (because bonuses are here for premature end of Eating and I'm eating longer than I should)
+             - If there's "penalty 2" present in the current Fasting window (as the current Fasting window can be the one that's occuring as the first Fasting window after the premature start of the next Eating window (and the standard Eating window)), it's preserved in the reset Fasting window as well
+             - If there's "penalty 1" present in the current Fasting window, it's discarded and calculated again
+             - The length of the Fasting is calculated as:
+               - default length of 16 hours + "penalty 1" + "penalty 2"
+         - If use the "premature start of the next Eating window", it has the following consequences:
+           - I'll get "penalty 2" thats' equal to 4 * <minutes between now and the end of the current Fasting window>
+           - The current Fasting window finishes immediatelly and the standard Eating window with default length of 8 hours (with no bonuses and no penalties) starts automatically
+           - The next Fasting window (after the end of the Eating window) is created in the following way
+             - the starting time of the Fasting window is set in a standard way (so, it means it's based on the time of the last meal in the previous Eating window and I can get bonuses for this for sure)
+             - The length of the Fasting is calculated as:
+               - default length of 16 hours - bonuses + "penalty 2"
+         - If there's any penalty that will be applied (this is a case of "penalty 2" in the prematurely started Eating window) or is being applied in the current Fasting window (it's a case of both penalty types) it's value (in minutes) is shown in a special badge. If there are both penalties, their sum is displayed in the badge
+         - As the user who wants to break the fasting rule, I have to see the consequences of my decision in both options I can choose from
+           - I want to see the sum of penalties that will be applied before I choose a particular option
+           - I want to see the time when the Fasting ends in the case a choose a particular option
+             - I want to see the whole Fasting interval (start and finish time of the Fasting) at the "premature start of the next Eating window" option
+         - Testing scenario
+           - Eating window starts at 15:00 and finishes at 23:00
+             - Last meal was at 20:00
+           - Fasting window starts at 20:00 (time of the last meal eaten in Eating window) and 90 minutes bonus is applied 
+           - Fasting would end at 20:00 + 16 hours - 90 minutes = 10:30 next day
+           - But I break the fasting rule at 23:10 using option "prolonging previous Eating window"
+           - Fasting window is restarted accordingly:
+             - start time is set to 23:10
+             - "penalty 1" is set to 2 * 10 minutes (10 minutes between 23:00 and 23:10) = 20 minutes
+             - Fasting will take default 16 hours + 20 minutes
+             - Fasting would finish at 15:30 next day
+           - But I break the fasting rule at 23:30 and again using the same option "prolonging previous Eating window"
+           - Fasting window is restarted accordingly again:
+             - start time is set to 23:30
+             - "penalty 1" is reset to 2 * 30 minutes (10 minutes between 23:00 and 23:30) = 60 minutes
+             - Fasting will take default 16 hours + 1 hour
+             - Fasting would finish at 16:30 next day
+           - But I start to be very hungry already at 15:50 and again break the fasting rules - now using the "premature start of the next Eating window" option what has its consequences
+           - "penalty 2" is set to 4 * 40 = 160 minutes (40 minutes between 15:50 and the planned end of the current Fasting window) and it will be applied in the next Fasting window
+           - The current Fasting window is finished immediatelly
+           - The standard Eating window starts immediatelly with start at 15:50 and end at 23:50 (no penalties or bonuses are applied here (never))
+             - Last meal was at 22:50 and it means I'll bring a 30 minutes bonus to the next Fasting window
+           - The next fasting window has the following parameters
+             - It starts at 22:50 (standard starting time derived from the last meal eating in Eating window)
+             - There's 30 minutes bonus
+             - There's 2 hours 40 minutes "penalty 2" applied here
+             - The length of the Fasting window will be:
+               - default 16 hours - 30 minutes (bonus) + 2 hours 40 minutes (penalty 2) = 18 hours 10 minutes
+             - Thus the end of the Fasting window would be at 17:00 next day
+           - But I break the fasting rule again and at 0:20 using the "prolonging previous Eating window" option
+           - Fasting window is restarted accordingly:
+             - start time is set to 0:20
+             - "penalty 1" is set to 2 * 30 minutes (30 minutes between the end of the previous Eating window (23:50) and now (0:20)) = 1 hour
+             - "penalty 2" is preserved to 2 hours 40 minutes
+             - Fasting will take default 16 hours + 1 hour (penalty 1) + 2 hours 40 minutes (penalty 2) = 19 hours 40 minutes
+             - Fasting window will end at 20:00 next day
+
+             
+          
