@@ -12,13 +12,13 @@ const DURATION_FASTING_MS = 16 * 60 * 60 * 1000;
 // --- State Variables ---
 let appState = {
     currentState: STATES.POTENTIAL_EATING,
-    windowStartTime: null,
     windowEndTime: null,
     lastMealTime: null,
     fastingBonusMs: 0,
     eatingBonusMs: 0,
-    fastingPenaltyMs: 0, // Penalty for the NEXT fasting window
-    appliedPenaltyMs: 0, // US-8: Penalty applied to the CURRENT fasting window
+    prolongingPenaltyMs: 0, // Option 1: Recalculated from target end
+    cumulativePrematureStartPenaltyMs: 0, // Option 2: Cumulative
+    appliedPenaltyMs: 0, // The sum currently applied to the window
     lastEatingWindowTargetMs: null,
     timeOffsetMs: 0
 };
@@ -107,7 +107,8 @@ function resetState() {
         lastMealTime: null,
         fastingBonusMs: 0,
         eatingBonusMs: 0,
-        fastingPenaltyMs: 0,
+        prolongingPenaltyMs: 0,
+        cumulativePrematureStartPenaltyMs: 0,
         appliedPenaltyMs: 0,
         lastEatingWindowTargetMs: null,
         timeOffsetMs: 0
@@ -197,15 +198,17 @@ function prolongEatingAndStartFast() {
     // US-7a: Penalty is based on now - lastEatingWindowTargetMs
     // and early finish bonus is discarded
     const targetEnd = appState.lastEatingWindowTargetMs || (appState.windowStartTime + DURATION_EATING_MS);
-    const penaltyMs = 2 * Math.max(0, now - targetEnd);
+    const newProlongingPenaltyMs = 2 * Math.max(0, now - targetEnd);
 
-    // US-7b: Penalty is cumulative
-    const totalPenalty = appState.appliedPenaltyMs + penaltyMs;
+    // US-7c: Option 1 penalty is recalculated (replaces previous prolonging penalty)
+    // but stays cumulative with US-7 Option 2 penalties.
+    appState.prolongingPenaltyMs = newProlongingPenaltyMs;
+    const totalPenalty = appState.cumulativePrematureStartPenaltyMs + appState.prolongingPenaltyMs;
 
     appState.currentState = STATES.FASTING;
     appState.windowStartTime = now;
     appState.windowEndTime = now + DURATION_FASTING_MS + totalPenalty;
-    appState.appliedPenaltyMs = totalPenalty; // US-8: Show badge immediately
+    appState.appliedPenaltyMs = totalPenalty; // For US-8 badge
     appState.eatingBonusMs = 0; // Discard early finish bonus
     appState.lastMealTime = now;
     appState.fastingBonusMs = 0; // Reset bonus for this cycle
@@ -218,9 +221,9 @@ function prolongEatingAndStartFast() {
 function startEatingPrematurely() {
     const now = getCurrentTime();
     const originalEnd = appState.windowEndTime;
-    const penaltyMs = 4 * (originalEnd - now);
+    const penaltyMs = 4 * Math.max(0, originalEnd - now);
 
-    appState.fastingPenaltyMs += penaltyMs; // US-7b: Cumulative penalty
+    appState.cumulativePrematureStartPenaltyMs += penaltyMs; // US-7c: Truly cumulative
 
     // Transition to eating normally but with the penalty stored
     transitionToEating(now);
@@ -234,19 +237,19 @@ function logLastMeal(retroTimeMs) {
     if (appState.currentState === STATES.FASTING) {
         appState.windowStartTime = timeToUse;
         appState.eatingBonusMs = calculateEatingBonus();
-        const penalty = appState.fastingPenaltyMs || 0;
+        const penalty = appState.cumulativePrematureStartPenaltyMs + appState.prolongingPenaltyMs;
         appState.windowEndTime = timeToUse + DURATION_FASTING_MS - appState.eatingBonusMs + penalty;
-        appState.fastingPenaltyMs = 0; // Reset if applied
+        appState.appliedPenaltyMs = penalty;
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         const eatingBonus = calculateEatingBonus();
-        const penalty = appState.fastingPenaltyMs || 0;
+        const penalty = appState.cumulativePrematureStartPenaltyMs + appState.prolongingPenaltyMs;
         const fastingEnd = timeToUse + DURATION_FASTING_MS - eatingBonus + penalty;
         if (getCurrentTime() < fastingEnd) {
             appState.currentState = STATES.FASTING;
             appState.windowStartTime = timeToUse;
             appState.eatingBonusMs = eatingBonus;
             appState.windowEndTime = fastingEnd;
-            appState.fastingPenaltyMs = 0; // Reset if applied
+            appState.appliedPenaltyMs = penalty;
         }
     }
 
@@ -275,13 +278,13 @@ function transitionToFasting() {
     // US-4: Calculate reward for shorter eating window
     appState.eatingBonusMs = calculateEatingBonus();
 
-    // US-7: Apply penalty from previous cycle if any
-    const penalty = appState.fastingPenaltyMs || 0;
+    // US-7c: Sum both penalty sources
+    const penalty = appState.cumulativePrematureStartPenaltyMs + appState.prolongingPenaltyMs;
     const bonus = appState.eatingBonusMs || 0;
     const duration = DURATION_FASTING_MS + penalty - bonus;
 
     appState.windowEndTime = baseStartTime + duration;
-    appState.appliedPenaltyMs = penalty; // Keep track for US-8 badge
+    appState.appliedPenaltyMs = penalty;
 
     appState.fastingBonusMs = 0; // Reset bonus for new cycle
     appState.fastingPenaltyMs = 0; // Reset penalty once applied
@@ -293,9 +296,10 @@ function transitionToPotential() {
     appState.currentState = STATES.POTENTIAL_EATING;
     // Keep windowStartTime and windowEndTime to calculate US-3 bonus later
     appState.lastMealTime = null;
-    // US-7b: Penalties are reset on successful fast completion
+    // US-7c: Penalties are reset on successful fast completion
     appState.appliedPenaltyMs = 0;
-    appState.fastingPenaltyMs = 0;
+    appState.prolongingPenaltyMs = 0;
+    appState.cumulativePrematureStartPenaltyMs = 0;
     saveState();
     updateUI();
 }
@@ -385,21 +389,22 @@ function tick() {
             return;
         }
 
-            // US-8: Prediction logic assumes pre-existing penalties must remain (US-7b)
-            const currentPenalty = appState.appliedPenaltyMs;
+        // US-8: Prediction logic assumes pre-existing penalties must remain (US-7b)
+        // US-7c: Option 1 recalculated, Option 2 cumulative
+        const baseCumulativePenalty = appState.cumulativePrematureStartPenaltyMs;
 
-            // Option 1 Prediction
-            const targetEnd = appState.lastEatingWindowTargetMs || (appState.windowStartTime + DURATION_EATING_MS);
-            const penalty1 = 2 * Math.max(0, now - targetEnd);
-            const forecast1 = now + DURATION_FASTING_MS + currentPenalty + penalty1;
-            elBreakProlongEnd.textContent = formatTimeOnly(forecast1, now);
+        // Option 1 Prediction
+        const targetEnd = appState.lastEatingWindowTargetMs || (appState.windowStartTime + DURATION_EATING_MS);
+        const newProlongingPenalty = 2 * Math.max(0, now - targetEnd);
+        const forecast1 = now + DURATION_FASTING_MS + baseCumulativePenalty + newProlongingPenalty;
+        elBreakProlongEnd.textContent = formatTimeOnly(forecast1, now);
 
-            // Option 2 Prediction
-            const nextPenaltyBase = appState.fastingPenaltyMs;
-            const n = appState.windowEndTime - now;
-            const penalty2 = 4 * n;
-            const forecast2 = now + DURATION_EATING_MS + DURATION_FASTING_MS + nextPenaltyBase + penalty2;
-            elBreakPrematureEnd.textContent = formatTimeOnly(forecast2, now);
+        // Option 2 Prediction
+        const currentProlonging = appState.prolongingPenaltyMs;
+        const n = appState.windowEndTime - now;
+        const newPrematurePenalty = 4 * Math.max(0, n);
+        const forecast2 = now + DURATION_EATING_MS + DURATION_FASTING_MS + baseCumulativePenalty + currentProlonging + newPrematurePenalty;
+        elBreakPrematureEnd.textContent = formatTimeOnly(forecast2, now);
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         // US-3 Real-time feedback: Calculate pending bonus
         if (appState.windowEndTime && now > appState.windowEndTime) {
