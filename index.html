@@ -60,6 +60,28 @@
                     <button id="btn-last-meal" class="btn primary-btn hidden">Log Last Meal</button>
                 </div>
 
+                <div class="badges-container">
+                    <div id="bonus-badge" class="badge bonus-badge hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 16 12 12 12 8"></polyline>
+                            <line x1="12" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                        <span id="bonus-text"></span>
+                    </div>
+
+                    <div id="penalty-badge" class="badge penalty-badge hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                            <path d="M12 9v4"></path>
+                            <path d="M12 17h.01"></path>
+                        </svg>
+                        <span id="penalty-text"></span>
+                    </div>
+                </div>
+
                 <!-- US-5: Forecast Section -->
                 <div id="forecast-section" class="forecast-section hidden">
                     <div class="forecast-header">
@@ -87,6 +109,37 @@
                             at
                             <span id="forecast-fasting-end-now" class="time-highlight">--:--</span>.
                         </p>
+                    </div>
+                </div>
+
+                <!-- US-7: Breaking Fast Section -->
+                <div id="break-fast-section" class="manual-log-section hidden">
+                    <button id="btn-toggle-break" class="btn secondary-btn toggle-btn punishment-btn">
+                        <span class="btn-text">Break Fast Prematurely</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="chevron-icon">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div id="break-fast-content" class="log-content-wrapper collapsed">
+                        <div class="punishment-options">
+                            <div class="punishment-card">
+                                <h4>Option 1: Prolong Eating</h4>
+                                <p>Extends previous eating window from its original end to now.
+                                    Total penalty: <strong id="break-prolong-penalty">0m</strong>.
+                                    Fast will end at: <strong id="break-prolong-end">--:--</strong></p>
+                                <button id="btn-break-prolong" class="btn primary-btn btn-sm">Prolong & Start
+                                    Fast</button>
+                            </div>
+                            <div class="punishment-card">
+                                <h4>Option 2: Premature Start</h4>
+                                <p>Starts a 100% standard 8h eating window now.
+                                    Total penalty: <strong id="break-premature-penalty">0m</strong>.
+                                    Next fast: <strong id="break-premature-interval">--:-- to --:--</strong></p>
+                                <button id="btn-break-premature" class="btn primary-btn btn-sm">Start Eating Now</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
