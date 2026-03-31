@@ -17,6 +17,9 @@ let appState = {
     lastMealTime: null,
     fastingBonusMs: 0,
     eatingBonusMs: 0,
+    prolongingPenaltyMs: 0, // Option 1
+    prematureStartPenaltyMs: 0, // Option 2
+    appliedPenaltyMs: 0,
     lastEatingWindowTargetMs: null,
     timeOffsetMs: 0
 };
@@ -57,6 +60,21 @@ const elForecastFastingEndNow = document.getElementById('forecast-fasting-end-no
 const elBtnToggleRetro = document.getElementById('btn-toggle-retro');
 const elRetroLogContent = document.getElementById('retro-log-content');
 
+// US-7 DOM Elements
+const elBreakFastSection = document.getElementById('break-fast-section');
+const elBreakFastContent = document.getElementById('break-fast-content');
+const elBtnToggleBreak = document.getElementById('btn-toggle-break');
+const elBtnBreakProlong = document.getElementById('btn-break-prolong');
+const elBtnBreakPremature = document.getElementById('btn-break-premature');
+
+const elPenaltyBadge = document.getElementById('penalty-badge');
+const elPenaltyText = document.getElementById('penalty-text');
+
+const elBreakProlongPenalty = document.getElementById('break-prolong-penalty');
+const elBreakProlongEnd = document.getElementById('break-prolong-end');
+const elBreakPrematurePenalty = document.getElementById('break-premature-penalty');
+const elBreakPrematureInterval = document.getElementById('break-premature-interval');
+
 // --- Initialization ---
 function init() {
     loadState();
@@ -92,6 +110,9 @@ function resetState() {
         lastMealTime: null,
         fastingBonusMs: 0,
         eatingBonusMs: 0,
+        prolongingPenaltyMs: 0,
+        prematureStartPenaltyMs: 0,
+        appliedPenaltyMs: 0,
         lastEatingWindowTargetMs: null,
         timeOffsetMs: 0
     };
@@ -153,7 +174,7 @@ function transitionToEating(retroTimeMs) {
     appState.fastingBonusMs = bonusMs;
     const targetEndTime = timeToUse + DURATION_EATING_MS + bonusMs;
     appState.windowEndTime = targetEndTime;
-    appState.lastEatingWindowTargetMs = targetEndTime;
+    appState.lastEatingWindowTargetMs = targetEndTime; // US-7: Vital for Penalty 1
     appState.eatingBonusMs = 0; // Reset for new window
     appState.lastMealTime = null;
     saveState();
@@ -167,15 +188,19 @@ function logLastMeal(retroTimeMs) {
     if (appState.currentState === STATES.FASTING) {
         appState.windowStartTime = timeToUse;
         appState.eatingBonusMs = calculateEatingBonus();
-        appState.windowEndTime = timeToUse + DURATION_FASTING_MS - appState.eatingBonusMs;
+        const penalty = appState.prolongingPenaltyMs + appState.prematureStartPenaltyMs;
+        appState.windowEndTime = timeToUse + DURATION_FASTING_MS - appState.eatingBonusMs + penalty;
+        appState.appliedPenaltyMs = penalty;
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         const eatingBonus = calculateEatingBonus();
-        const fastingEnd = timeToUse + DURATION_FASTING_MS - eatingBonus;
+        const penalty = appState.prolongingPenaltyMs + appState.prematureStartPenaltyMs;
+        const fastingEnd = timeToUse + DURATION_FASTING_MS - eatingBonus + penalty;
         if (getCurrentTime() < fastingEnd) {
             appState.currentState = STATES.FASTING;
             appState.windowStartTime = timeToUse;
             appState.eatingBonusMs = eatingBonus;
             appState.windowEndTime = fastingEnd;
+            appState.appliedPenaltyMs = penalty;
         }
     }
 
@@ -201,21 +226,26 @@ function transitionToFasting() {
     const baseStartTime = appState.lastMealTime ? appState.lastMealTime : appState.windowEndTime;
     appState.windowStartTime = baseStartTime;
 
-    // US-4: Calculate reward for shorter eating window
+    // US-4 & US-7: Base duration + Penalty - Bonus
     appState.eatingBonusMs = calculateEatingBonus();
-    appState.windowEndTime = baseStartTime + DURATION_FASTING_MS - appState.eatingBonusMs;
+    const totalPenalty = appState.prolongingPenaltyMs + appState.prematureStartPenaltyMs;
+    appState.windowEndTime = baseStartTime + DURATION_FASTING_MS - appState.eatingBonusMs + totalPenalty;
+    appState.appliedPenaltyMs = totalPenalty;
 
-    console.log("Fasting windowEndTime set to:", formatTimeOnly(appState.windowEndTime));
-
-    appState.fastingBonusMs = 0; // Reset bonus for new cycle
+    appState.fastingBonusMs = 0; // Reset for new cycle
     saveState();
     updateUI();
 }
 
 function transitionToPotential() {
     appState.currentState = STATES.POTENTIAL_EATING;
-    // Keep windowStartTime and windowEndTime to calculate US-3 bonus later
     appState.lastMealTime = null;
+
+    // US-7: Clear all penalties only after completing a fast
+    appState.prolongingPenaltyMs = 0;
+    appState.prematureStartPenaltyMs = 0;
+    appState.appliedPenaltyMs = 0;
+
     saveState();
     updateUI();
 }
@@ -251,6 +281,66 @@ function toggleRetroLog(forceValue) {
     }
 }
 
+function toggleBreakFastLog(forceValue) {
+    const isExpanded = typeof forceValue === 'boolean' ? forceValue : elBreakFastContent.classList.contains('collapsed');
+
+    if (isExpanded) {
+        elBreakFastContent.classList.remove('collapsed');
+        elBtnToggleBreak.classList.add('active');
+        elBtnToggleBreak.querySelector('.btn-text').textContent = "Close Break Options";
+    } else {
+        elBreakFastContent.classList.add('collapsed');
+        elBtnToggleBreak.classList.remove('active');
+        elBtnToggleBreak.querySelector('.btn-text').textContent = "Break Fast Prematurely";
+    }
+}
+
+function startEatingPrematurely() {
+    const now = getCurrentTime();
+    const originalEnd = appState.windowEndTime;
+
+    // Option 2 (Penalty 2): set based on remaining fast time
+    appState.prematureStartPenaltyMs = 4 * Math.max(0, originalEnd - now);
+
+    // US-7: Clear Penalty 1 when starting a new Eating window
+    appState.prolongingPenaltyMs = 0;
+    appState.appliedPenaltyMs = 0;
+
+    // Transition to 100% standard eating window (no rewards/penalties here)
+    appState.currentState = STATES.EATING;
+    appState.windowStartTime = now;
+    appState.fastingBonusMs = 0;
+    const targetEatingEnd = now + DURATION_EATING_MS;
+    appState.windowEndTime = targetEatingEnd;
+    appState.lastEatingWindowTargetMs = targetEatingEnd;
+    appState.eatingBonusMs = 0;
+    appState.lastMealTime = null;
+
+    toggleBreakFastLog(false);
+    saveState();
+    updateUI();
+}
+
+function prolongEatingAndStartFast() {
+    const now = getCurrentTime();
+    const originalTargetEnd = appState.lastEatingWindowTargetMs;
+
+    // Option 1 (Penalty 1): Recalculated from original target end
+    appState.prolongingPenaltyMs = 2 * Math.max(0, now - originalTargetEnd);
+
+    // Restart Fast from now
+    appState.currentState = STATES.FASTING;
+    appState.windowStartTime = now;
+    appState.eatingBonusMs = 0;
+    const totalPenalty = appState.prolongingPenaltyMs + appState.prematureStartPenaltyMs;
+    appState.windowEndTime = now + DURATION_FASTING_MS + totalPenalty;
+    appState.appliedPenaltyMs = totalPenalty;
+
+    toggleBreakFastLog(false);
+    saveState();
+    updateUI();
+}
+
 // --- Ticker ---
 function tick() {
     const now = getCurrentTime();
@@ -266,18 +356,20 @@ function tick() {
         }
 
         // US-5: Eating Window Forecast
+        const currentPenalties = appState.prolongingPenaltyMs + appState.prematureStartPenaltyMs;
+
         if (appState.lastMealTime) {
             elForecastLastMealRow.classList.remove('hidden');
             elForecastLastMealTime.textContent = formatTimeOnly(appState.lastMealTime);
             const bonusLastMeal = getEatingBonusForTime(appState.lastMealTime);
-            const forecastLast = appState.lastMealTime + DURATION_FASTING_MS - bonusLastMeal;
+            const forecastLast = appState.lastMealTime + DURATION_FASTING_MS - bonusLastMeal + currentPenalties;
             elForecastFastingEndLast.textContent = formatTimeOnly(forecastLast);
         } else {
             elForecastLastMealRow.classList.add('hidden');
         }
 
         const bonusNow = getEatingBonusForTime(now);
-        const forecastNow = now + DURATION_FASTING_MS - bonusNow;
+        const forecastNow = now + DURATION_FASTING_MS - bonusNow + currentPenalties;
         elForecastFastingEndNow.textContent = formatTimeOnly(forecastNow);
 
     } else if (appState.currentState === STATES.FASTING) {
@@ -285,6 +377,24 @@ function tick() {
             transitionToPotential();
             return;
         }
+
+        // US-7 Real-time predictions for Break Fast options
+        const originalEatingEnd = appState.lastEatingWindowTargetMs;
+
+        // Prediction 1: Prolonging
+        const predictedPenalty1 = 2 * Math.max(0, now - originalEatingEnd);
+        const totalPenalty1 = predictedPenalty1 + appState.prematureStartPenaltyMs;
+        elBreakProlongPenalty.textContent = `${Math.floor(totalPenalty1 / 60000)}m`;
+        elBreakProlongEnd.textContent = formatTimeOnly(now + DURATION_FASTING_MS + totalPenalty1);
+
+        // Prediction 2: Premature Start
+        const predictedPenalty2 = 4 * Math.max(0, appState.windowEndTime - now);
+        elBreakPrematurePenalty.textContent = `${Math.floor(predictedPenalty2 / 60000)}m`;
+        // Interval: Starts now, Ends after (Eating 8h + Fasting 16h + Penalty 2)
+        const nextFastStart = now + DURATION_EATING_MS;
+        const nextFastEnd = nextFastStart + DURATION_FASTING_MS + predictedPenalty2;
+        elBreakPrematureInterval.textContent = `${formatTimeOnly(nextFastStart)} to ${formatTimeOnly(nextFastEnd)}`;
+
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         // US-3 Real-time feedback: Calculate pending bonus
         if (appState.windowEndTime && now > appState.windowEndTime) {
@@ -329,6 +439,8 @@ function updateUI() {
     elTimerDisplay.classList.add('hidden');
     elBtnFirstMeal.classList.add('hidden');
     elBtnLastMeal.classList.add('hidden');
+    elBreakFastSection.classList.add('hidden');
+    elPenaltyBadge.classList.add('hidden');
 
     if (state === STATES.POTENTIAL_EATING) {
         elCurrentStateTitle.textContent = "Potential Eating Window";
@@ -380,6 +492,9 @@ function updateUI() {
         elBtnLastMeal.textContent = "Log Last Meal";
         elBtnLastMeal.disabled = false;
 
+        // Penalty badge should NOT be shown in the Eating window
+        elPenaltyBadge.classList.add('hidden');
+
         // US-5: Update Forecast visibility
         elForecastSection.classList.remove('hidden');
         elForecastPotentialContent.classList.add('hidden');
@@ -405,8 +520,20 @@ function updateUI() {
             elBonusBadge.classList.add('hidden');
         }
 
+        // US-8 Penalty Badge
+        if (appState.appliedPenaltyMs > 0) {
+            const penaltyMins = Math.floor(appState.appliedPenaltyMs / 60000);
+            elPenaltyText.textContent = `+${penaltyMins}m penalty applied!`;
+            elPenaltyBadge.classList.remove('hidden');
+        } else {
+            elPenaltyBadge.classList.add('hidden');
+        }
+
         // US-5: Update Forecast visibility
         elForecastSection.classList.add('hidden');
+
+        // US-7: Show punishment section
+        elBreakFastSection.classList.remove('hidden');
     }
 
 }
@@ -422,6 +549,18 @@ function setupEventListeners() {
 
     if (elBtnToggleRetro) {
         elBtnToggleRetro.addEventListener('click', () => toggleRetroLog());
+    }
+
+    if (elBtnToggleBreak) {
+        elBtnToggleBreak.addEventListener('click', () => toggleBreakFastLog());
+    }
+
+    if (elBtnBreakProlong) {
+        elBtnBreakProlong.addEventListener('click', prolongEatingAndStartFast);
+    }
+
+    if (elBtnBreakPremature) {
+        elBtnBreakPremature.addEventListener('click', startEatingPrematurely);
     }
 
     document.getElementById('btn-debug-add-min').addEventListener('click', () => addTimeOffset(60 * 1000));
