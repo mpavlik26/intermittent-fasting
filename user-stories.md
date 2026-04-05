@@ -54,7 +54,7 @@
      - Background:
        - I want to enable the ability to eat even when I'm in fasting window. As this is something what I, as someone who should follow the intermittent fasting rules, should avoid, there will be a "punishment" for this.
     - User stories:
-       - US 7:
+       - US-7:
          - As the user in Fasting window it can happen I have to eat even when I'm in fasting window. I have basically two options:
            - 1. "prolonging previous Eating window"
            - 2. "premature start of the next Eating window"
@@ -117,6 +117,10 @@
              - "penalty 2" is preserved to 2 hours 40 minutes
              - Fasting will take default 16 hours + 1 hour (penalty 1) + 2 hours 40 minutes (penalty 2) = 19 hours 40 minutes
              - Fasting window will end at 20:00 next day
-
-             
-          
+- The sixth slice will have the following background and user stories:
+     - Background:
+       - I just want to clean-up the UI for maximal user comfort
+    - User stories:
+       - US-8:
+         - Me as the user who would like to have Debug control section hidden (meaning not just collapsed) and have it displayed only when really needed I'd like to have there an option to show and then hide the Debug control section using 5 quick taps on the "FASTING TRACKER" label (name of the application)
+         

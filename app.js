@@ -21,7 +21,8 @@ let appState = {
     prematureStartPenaltyMs: 0, // Option 2
     appliedPenaltyMs: 0,
     lastEatingWindowTargetMs: null,
-    timeOffsetMs: 0
+    timeOffsetMs: 0,
+    isDebugUnlocked: false // US-8: Secret toggle
 };
 
 // --- DOM Elements ---
@@ -75,6 +76,9 @@ const elBreakProlongEnd = document.getElementById('break-prolong-end');
 const elBreakPrematurePenalty = document.getElementById('break-premature-penalty');
 const elBreakPrematureInterval = document.getElementById('break-premature-interval');
 
+const elAppTitle = document.getElementById('app-title');
+const elDebugSection = document.querySelector('.debug-controls');
+
 // --- Initialization ---
 function init() {
     loadState();
@@ -114,7 +118,8 @@ function resetState() {
         prematureStartPenaltyMs: 0,
         appliedPenaltyMs: 0,
         lastEatingWindowTargetMs: null,
-        timeOffsetMs: 0
+        timeOffsetMs: 0,
+        isDebugUnlocked: appState.isDebugUnlocked // US-8: Preserve unlocked state across app resets if desired, or set to false
     };
     saveState();
     updateUI();
@@ -431,10 +436,35 @@ function tick() {
     }
 }
 
-// --- UI Updates ---
+let clickCount = 0;
+let clickTimer = null;
+
+function handleTitleClick() {
+    clickCount++;
+    if (clickTimer) clearTimeout(clickTimer);
+
+    if (clickCount >= 5) {
+        appState.isDebugUnlocked = !appState.isDebugUnlocked;
+        saveState();
+        updateUI();
+        clickCount = 0;
+    } else {
+        clickTimer = setTimeout(() => {
+            clickCount = 0;
+        }, 3000);
+    }
+}
+
 function updateUI() {
     const state = appState.currentState;
     elStatusCard.setAttribute('data-state', state);
+
+    // US-8 Handle debug visibility
+    if (appState.isDebugUnlocked) {
+        elDebugSection.classList.add('visible');
+    } else {
+        elDebugSection.classList.remove('visible');
+    }
 
     elTimerDisplay.classList.add('hidden');
     elBtnFirstMeal.classList.add('hidden');
@@ -561,6 +591,10 @@ function setupEventListeners() {
 
     if (elBtnBreakPremature) {
         elBtnBreakPremature.addEventListener('click', startEatingPrematurely);
+    }
+
+    if (elAppTitle) {
+        elAppTitle.addEventListener('click', handleTitleClick);
     }
 
     document.getElementById('btn-debug-add-min').addEventListener('click', () => addTimeOffset(60 * 1000));
