@@ -402,6 +402,14 @@ body {
     border-color: rgba(255, 255, 255, 0.3);
 }
 
+.day-label {
+    font-size: 0.6em;
+    vertical-align: super;
+    margin-left: 2px;
+    opacity: 0.8;
+    color: var(--text-muted);
+}
+
 /* Utilities */
 .hidden {
     display: none !important;
