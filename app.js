@@ -136,6 +136,25 @@ function formatTimeOnly(timestamp) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function renderTime(timestamp) {
+    if (!timestamp) return '--:--';
+    const timeStr = formatTimeOnly(timestamp);
+
+    const now = new Date(getCurrentTime());
+    const target = new Date(timestamp);
+
+    // Compare date parts only
+    const isSameDay = now.getFullYear() === target.getFullYear() &&
+        now.getMonth() === target.getMonth() &&
+        now.getDate() === target.getDate();
+
+    if (isSameDay) return timeStr;
+
+    // Get 2-char day abbreviation
+    const dayName = target.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2);
+    return `${timeStr}<sup class="day-label">${dayName}</sup>`;
+}
+
 function formatDuration(ms) {
     if (ms < 0) ms = 0;
     const totalSeconds = Math.floor(ms / 1000);
@@ -365,17 +384,17 @@ function tick() {
 
         if (appState.lastMealTime) {
             elForecastLastMealRow.classList.remove('hidden');
-            elForecastLastMealTime.textContent = formatTimeOnly(appState.lastMealTime);
+            elForecastLastMealTime.innerHTML = renderTime(appState.lastMealTime);
             const bonusLastMeal = getEatingBonusForTime(appState.lastMealTime);
             const forecastLast = appState.lastMealTime + DURATION_FASTING_MS - bonusLastMeal + currentPenalties;
-            elForecastFastingEndLast.textContent = formatTimeOnly(forecastLast);
+            elForecastFastingEndLast.innerHTML = renderTime(forecastLast);
         } else {
             elForecastLastMealRow.classList.add('hidden');
         }
 
         const bonusNow = getEatingBonusForTime(now);
         const forecastNow = now + DURATION_FASTING_MS - bonusNow + currentPenalties;
-        elForecastFastingEndNow.textContent = formatTimeOnly(forecastNow);
+        elForecastFastingEndNow.innerHTML = renderTime(forecastNow);
 
     } else if (appState.currentState === STATES.FASTING) {
         if (now >= appState.windowEndTime) {
@@ -390,7 +409,7 @@ function tick() {
         const predictedPenalty1 = 2 * Math.max(0, now - originalEatingEnd);
         const totalPenalty1 = predictedPenalty1 + appState.prematureStartPenaltyMs;
         elBreakProlongPenalty.textContent = `${Math.floor(totalPenalty1 / 60000)}m`;
-        elBreakProlongEnd.textContent = formatTimeOnly(now + DURATION_FASTING_MS + totalPenalty1);
+        elBreakProlongEnd.innerHTML = renderTime(now + DURATION_FASTING_MS + totalPenalty1);
 
         // Prediction 2: Premature Start
         const predictedPenalty2 = 4 * Math.max(0, appState.windowEndTime - now);
@@ -398,7 +417,7 @@ function tick() {
         // Interval: Starts now, Ends after (Eating 8h + Fasting 16h + Penalty 2)
         const nextFastStart = now + DURATION_EATING_MS;
         const nextFastEnd = nextFastStart + DURATION_FASTING_MS + predictedPenalty2;
-        elBreakPrematureInterval.textContent = `${formatTimeOnly(nextFastStart)} to ${formatTimeOnly(nextFastEnd)}`;
+        elBreakPrematureInterval.innerHTML = `${renderTime(nextFastStart)} to ${renderTime(nextFastEnd)}`;
 
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         // US-3 Real-time feedback: Calculate pending bonus
@@ -420,10 +439,10 @@ function tick() {
             ? Math.floor((now - appState.windowEndTime) / 2)
             : 0;
         const forecastedEatingEnd = now + DURATION_EATING_MS + pendingBonusMs;
-        elForecastEatingEnd.textContent = formatTimeOnly(forecastedEatingEnd);
+        elForecastEatingEnd.innerHTML = renderTime(forecastedEatingEnd);
     }
 
-    // Update timers
+    // Update timers & labels (US-9: Global updates for midnight transitions)
     if (appState.currentState === STATES.EATING || appState.currentState === STATES.FASTING) {
         const remainingMs = appState.windowEndTime - now;
         elCountdown.textContent = formatDuration(remainingMs);
@@ -433,6 +452,11 @@ function tick() {
         const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
 
         elProgressBar.style.width = `${progressPercent}%`;
+    }
+
+    if (appState.windowStartTime && appState.windowEndTime) {
+        elStartTimeVal.innerHTML = renderTime(appState.windowStartTime);
+        elEndTimeVal.innerHTML = renderTime(appState.windowEndTime);
     }
 }
 
@@ -512,9 +536,9 @@ function updateUI() {
 
         elTimerLabel.textContent = "Eating Window Ends In";
         elTimerDisplay.classList.remove('hidden');
+        elProgressBar.style.backgroundColor = 'var(--state-eating)';
 
-        elStartTimeVal.textContent = formatTimeOnly(appState.windowStartTime);
-        elEndTimeVal.textContent = formatTimeOnly(appState.windowEndTime);
+        // elStartTimeVal/elEndTimeVal now handled by tick() for dynamic US-9 updates
 
         elBtnLastMeal.classList.remove('hidden');
 
@@ -536,9 +560,9 @@ function updateUI() {
 
         elTimerLabel.textContent = "Fasting Target Reached In";
         elTimerDisplay.classList.remove('hidden');
+        elProgressBar.style.backgroundColor = 'var(--state-fasting)';
 
-        elStartTimeVal.textContent = formatTimeOnly(appState.windowStartTime);
-        elEndTimeVal.textContent = formatTimeOnly(appState.windowEndTime);
+        // elStartTimeVal/elEndTimeVal now handled by tick() for dynamic US-9 updates
 
         // US-4 UI Feedback
         if (appState.eatingBonusMs > 0) {

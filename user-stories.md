@@ -123,4 +123,10 @@
     - User stories:
        - US-8:
          - Me as the user who would like to have Debug control section hidden (meaning not just collapsed) and have it displayed only when really needed I'd like to have there an option to show and then hide the Debug control section using 5 quick taps on the "FASTING TRACKER" label (name of the application)
+       - US-9:
+         - As the user I'd like to see at any time that any time presented (e.g. starting or finishing time of the particular window, predictions, ...) is in the different day (previous / next / or even more days before / from now). So, if this is a case, I want to see there a 2-character long abbreviation of the day of week (as an upper index next to the time)
+           - This has to work really dynamically what means that if I'm in the window that's going through midnight, there's a day superscript by the finish time of the particular window and there's no day superscript at the starting time of that window and at the midnight this actually has to switch
+           - It has to work also in all the predictions (e.g. "If you start eating now, your eating window ends at xx:yy")  
+
+       
          
