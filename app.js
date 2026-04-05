@@ -151,7 +151,7 @@ function renderTime(timestamp) {
     if (isSameDay) return timeStr;
 
     // Get 2-char day abbreviation
-    const dayName = target.toLocaleDateString([], { weekday: 'short' }).slice(0, 2);
+    const dayName = target.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2);
     return `${timeStr}<sup class="day-label">${dayName}</sup>`;
 }
 
@@ -439,10 +439,10 @@ function tick() {
             ? Math.floor((now - appState.windowEndTime) / 2)
             : 0;
         const forecastedEatingEnd = now + DURATION_EATING_MS + pendingBonusMs;
-        elForecastEatingEnd.textContent = formatTimeOnly(forecastedEatingEnd);
+        elForecastEatingEnd.innerHTML = renderTime(forecastedEatingEnd);
     }
 
-    // Update timers
+    // Update timers & labels (US-9: Global updates for midnight transitions)
     if (appState.currentState === STATES.EATING || appState.currentState === STATES.FASTING) {
         const remainingMs = appState.windowEndTime - now;
         elCountdown.textContent = formatDuration(remainingMs);
@@ -452,6 +452,11 @@ function tick() {
         const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
 
         elProgressBar.style.width = `${progressPercent}%`;
+    }
+
+    if (appState.windowStartTime && appState.windowEndTime) {
+        elStartTimeVal.innerHTML = renderTime(appState.windowStartTime);
+        elEndTimeVal.innerHTML = renderTime(appState.windowEndTime);
     }
 }
 
@@ -533,8 +538,7 @@ function updateUI() {
         elTimerDisplay.classList.remove('hidden');
         elProgressBar.style.backgroundColor = 'var(--state-eating)';
 
-        elStartTimeVal.innerHTML = renderTime(appState.windowStartTime);
-        elEndTimeVal.innerHTML = renderTime(appState.windowEndTime);
+        // elStartTimeVal/elEndTimeVal now handled by tick() for dynamic US-9 updates
 
         elBtnLastMeal.classList.remove('hidden');
 
@@ -558,8 +562,7 @@ function updateUI() {
         elTimerDisplay.classList.remove('hidden');
         elProgressBar.style.backgroundColor = 'var(--state-fasting)';
 
-        elStartTimeVal.innerHTML = renderTime(appState.windowStartTime);
-        elEndTimeVal.innerHTML = renderTime(appState.windowEndTime);
+        // elStartTimeVal/elEndTimeVal now handled by tick() for dynamic US-9 updates
 
         // US-4 UI Feedback
         if (appState.eatingBonusMs > 0) {
