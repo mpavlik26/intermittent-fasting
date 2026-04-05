@@ -123,7 +123,4 @@
     - User stories:
        - US-8:
          - Me as the user who would like to have Debug control section hidden (meaning not just collapsed) and have it displayed only when really needed I'd like to have there an option to show and then hide the Debug control section using 5 quick taps on the "FASTING TRACKER" label (name of the application)
-         - I'd like to have there also option to reset the Time offset to 0 ms (I suppose it's different than "Reset App" option)
-   
-             
-          
+         
