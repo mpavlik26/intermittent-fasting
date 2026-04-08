@@ -138,6 +138,7 @@
              - bonuses and penalties applied to the window
            - each record is added to the history at the finish time of a the particular window
            - windows history should be accessible using a button or link that's placed under "Add retrospective log button"
+           - at the case of the prolonged Eating window, I'd like to see the time when the prolongation was chosen as the finish time of the previous Eating window with some indication, that the finish time was prolonged by a certain amount of minutes (I'd like to see those minutes there (at the Eating record) as well). Penalty applied for this prolongation will be however displayed at the record corresponding to the restarted Fasting window. 
 
 
 
