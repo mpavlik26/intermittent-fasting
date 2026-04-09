@@ -135,10 +135,16 @@
            - each record will contain:
              - the window type (eat / fast) - ideally using some icon / gentle background color to save display space
              - start and finish time
-             - bonuses and penalties applied to the window
+               - Finish time of the history record for Eating window is the time when the window can end latest (not the time of the last meal eaten in Eating window)
+                 - this is the truth also in the case of prolonging the Eating window (see the edge case described bellow)
+               - Finish time of the history record for Fasting window is the time when Fasting ends (time when potential eating window actually starts)
+                 - this is the truth also in the edge case of the premature start of the next Eating window (see the edge case described bellow)
+             - bonuses and penalties applied to the particular window
+               - it means: when there's Eating window and the last meal was 1 hour before the end of the Eating window, the bonus is caused in Eating window, but it's applied in the consequent Fasting window and that's why I'd like to see it at the Fasting history record 
            - each record is added to the history at the finish time of a the particular window
-           - windows history should be accessible using a button or link that's placed under "Add retrospective log button"
-           - at the case of the prolonged Eating window, I'd like to see the time when the prolongation was chosen as the finish time of the previous Eating window with some indication, that the finish time was prolonged by a certain amount of minutes (I'd like to see those minutes there (at the Eating record) as well). Penalty applied for this prolongation will be however displayed at the record corresponding to the restarted Fasting window. 
+           - windows history should be accessible using a button or link that's placed under "Add retrospective log button" and the new Windows history area is scrollable with max-height of 500px
+           - at the case of the prolonged Eating window, I'd like to have the record for the prolonged eating window untouched by the prolonging at all (it means e.g. if the Eating window should end at 23:00, but I prolonged it at 23:30, the history record for the prolonged eating window will still have 23:00 as the time of the Eating window end). Penalty applied for this prolongation will be however displayed at the record corresponding to the restarted Fasting window for sure. There will be also just one Fasting record in the history at this case - the restarted one. I don't want to see there a Fasting record from 23:00 till 23:30. I just want to see there a record for restarted Fasting that started at 23:30.
+           - at the case of the premature start of the Eating window, I'd like to see again the Fasting window times untouched by this premature start (it means e.g. if the Fasting window should finish at 7:00, but I started the Eating window prematurely already at 6:30, then I'd like to have still 7:00 as the time of the end of the Fasting window). Penalty applied for the premature start of the Eating window will then be displayed at the history record related to the next Fasting window as it's applied there.
 
 
 

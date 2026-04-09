@@ -22,7 +22,8 @@ let appState = {
     appliedPenaltyMs: 0,
     lastEatingWindowTargetMs: null,
     timeOffsetMs: 0,
-    isDebugUnlocked: false // US-8: Secret toggle
+    isDebugUnlocked: false, // US-8: Secret toggle
+    history: [] // US-10: History of windows
 };
 
 // --- DOM Elements ---
@@ -79,6 +80,11 @@ const elBreakPrematureInterval = document.getElementById('break-premature-interv
 const elAppTitle = document.getElementById('app-title');
 const elDebugSection = document.querySelector('.debug-controls');
 
+// US-10 DOM Elements
+const elBtnToggleHistory = document.getElementById('btn-toggle-history');
+const elHistoryContent = document.getElementById('history-content');
+const elHistoryList = document.getElementById('history-list');
+
 // --- Initialization ---
 function init() {
     loadState();
@@ -119,7 +125,8 @@ function resetState() {
         appliedPenaltyMs: 0,
         lastEatingWindowTargetMs: null,
         timeOffsetMs: 0,
-        isDebugUnlocked: appState.isDebugUnlocked // US-8: Preserve unlocked state across app resets if desired, or set to false
+        isDebugUnlocked: appState.isDebugUnlocked,
+        history: [] // US-10: Clear history on hard reset
     };
     saveState();
     updateUI();
@@ -183,6 +190,89 @@ function parseRetrospectiveTime(timeStr) {
     return candidate.getTime();
 }
 
+// --- History Helpers ---
+
+function addToHistory(type, startTime, endTime, bonusMs = 0, penaltyMs = 0) {
+    if (!startTime || !endTime) return;
+
+    const record = {
+        type,
+        startTime,
+        endTime,
+        bonusMs,
+        penaltyMs,
+        id: Date.now()
+    };
+
+    appState.history.unshift(record); // Add to top (descending)
+    saveState();
+}
+
+function renderHistory() {
+    if (!elHistoryList) return;
+
+    if (appState.history.length === 0) {
+        elHistoryList.innerHTML = '<p class="empty-history">No records yet.</p>';
+        return;
+    }
+
+    // Group by date
+    const groups = {};
+    appState.history.forEach(record => {
+        const d = new Date(record.startTime);
+        const dateKey = d.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        if (!groups[dateKey]) groups[dateKey] = [];
+        groups[dateKey].push(record);
+    });
+
+    let html = '';
+    // Groups are already roughly in order because history is unshifted
+    for (const date in groups) {
+        html += `<div class="history-date-group">
+            <h4 class="history-date-header">${date}</h4>
+            <div class="history-records">`;
+
+        groups[date].forEach(r => {
+            const isEating = r.type === STATES.EATING;
+            const icon = isEating ? '🍴' : '🌙';
+            const typeLabel = isEating ? 'Eating' : 'Fasting';
+
+            let extras = '';
+            if (r.bonusMs > 0) {
+                const label = isEating ? `Reward +${Math.round(r.bonusMs / 60000)}m window` : `Reward -${Math.round(r.bonusMs / 60000)}m fast`;
+                extras += `<span class="history-tag bonus">${label}</span>`;
+            }
+            if (r.penaltyMs > 0) {
+                extras += `<span class="history-tag penalty">Penalty +${Math.round(r.penaltyMs / 60000)}m</span>`;
+            }
+
+            html += `
+                <div class="history-record-item" data-type="${r.type}">
+                    <div class="record-main">
+                        <span class="record-icon">${icon}</span>
+                        <div class="record-details">
+                            <span class="record-type">${typeLabel}</span>
+                            <span class="record-time">${formatTimeOnly(r.startTime)} - ${formatTimeOnly(r.endTime)}</span>
+                        </div>
+                    </div>
+                    <div class="record-extras">
+                        ${extras}
+                    </div>
+                </div>`;
+        });
+
+        html += `</div></div>`;
+    }
+
+    elHistoryList.innerHTML = html;
+}
+
 function transitionToEating(retroTimeMs) {
     // If called via standard event listener, it passes PointerEvent. We check if it's a number.
     const timeToUse = typeof retroTimeMs === 'number' ? retroTimeMs : getCurrentTime();
@@ -201,6 +291,10 @@ function transitionToEating(retroTimeMs) {
     appState.lastEatingWindowTargetMs = targetEndTime; // US-7: Vital for Penalty 1
     appState.eatingBonusMs = 0; // Reset for new window
     appState.lastMealTime = null;
+    
+    // US-10: We don't add to history here, but we could if we wanted to track Potential windows.
+    // US-10 only mentions Eating and Fasting windows.
+    
     saveState();
     updateUI();
 }
@@ -246,6 +340,9 @@ function getEatingBonusForTime(timeMs) {
 function transitionToFasting() {
     console.log("Transitioning to FASTING...");
     const now = getCurrentTime();
+    const originalEatingStart = appState.windowStartTime;
+    const originalEatingTargetEnd = appState.lastEatingWindowTargetMs;
+    
     appState.currentState = STATES.FASTING;
     const baseStartTime = appState.lastMealTime ? appState.lastMealTime : appState.windowEndTime;
     appState.windowStartTime = baseStartTime;
@@ -256,6 +353,10 @@ function transitionToFasting() {
     appState.windowEndTime = baseStartTime + DURATION_FASTING_MS - appState.eatingBonusMs + totalPenalty;
     appState.appliedPenaltyMs = totalPenalty;
 
+    // US-10: Record the Eating window that just finished
+    // US-10 refined: End time is target end time. Bonus shown is what was APPLIED to this window (fastingBonusMs).
+    addToHistory(STATES.EATING, originalEatingStart, originalEatingTargetEnd, appState.fastingBonusMs, 0);
+
     appState.fastingBonusMs = 0; // Reset for new cycle
     saveState();
     updateUI();
@@ -265,10 +366,19 @@ function transitionToPotential() {
     appState.currentState = STATES.POTENTIAL_EATING;
     appState.lastMealTime = null;
 
-    // US-7: Clear all penalties only after completing a fast
+    const totalPenaltyAtEnd = appState.appliedPenaltyMs;
+    const eatingBonusAtEnd = appState.eatingBonusMs;
+    const fastingWindowStart = appState.windowStartTime;
+    const fastingWindowEnd = appState.windowEndTime;
+
     appState.prolongingPenaltyMs = 0;
     appState.prematureStartPenaltyMs = 0;
     appState.appliedPenaltyMs = 0;
+    appState.eatingBonusMs = 0;
+
+    // US-10: Record the Fasting window that just finished
+    // US-10 refined: Applied bonus (eatingBonusMs) and penalties (prolonging/premature) are shown here.
+    addToHistory(STATES.FASTING, fastingWindowStart, fastingWindowEnd, eatingBonusAtEnd, totalPenaltyAtEnd);
 
     saveState();
     updateUI();
@@ -305,6 +415,21 @@ function toggleRetroLog(forceValue) {
     }
 }
 
+function toggleHistory(forceValue) {
+    const isExpanded = typeof forceValue === 'boolean' ? forceValue : elHistoryContent.classList.contains('collapsed');
+
+    if (isExpanded) {
+        elHistoryContent.classList.remove('collapsed');
+        elBtnToggleHistory.classList.add('active');
+        elBtnToggleHistory.querySelector('.btn-text').textContent = "Close Windows History";
+        renderHistory();
+    } else {
+        elHistoryContent.classList.add('collapsed');
+        elBtnToggleHistory.classList.remove('active');
+        elBtnToggleHistory.querySelector('.btn-text').textContent = "View Windows History";
+    }
+}
+
 function toggleBreakFastLog(forceValue) {
     const isExpanded = typeof forceValue === 'boolean' ? forceValue : elBreakFastContent.classList.contains('collapsed');
 
@@ -322,6 +447,8 @@ function toggleBreakFastLog(forceValue) {
 function startEatingPrematurely() {
     const now = getCurrentTime();
     const originalEnd = appState.windowEndTime;
+    const originalStartTime = appState.windowStartTime;
+    const originalPenalty = appState.appliedPenaltyMs;
 
     // Option 2 (Penalty 2): set based on remaining fast time
     appState.prematureStartPenaltyMs = 4 * Math.max(0, originalEnd - now);
@@ -340,6 +467,10 @@ function startEatingPrematurely() {
     appState.eatingBonusMs = 0;
     appState.lastMealTime = null;
 
+    // US-10: Record the Fasting window that was cut short
+    // US-10 refined: Show target end time and active bonus/penalty
+    addToHistory(STATES.FASTING, originalStartTime, originalEnd, appState.eatingBonusMs, originalPenalty); 
+
     toggleBreakFastLog(false);
     saveState();
     updateUI();
@@ -348,6 +479,8 @@ function startEatingPrematurely() {
 function prolongEatingAndStartFast() {
     const now = getCurrentTime();
     const originalTargetEnd = appState.lastEatingWindowTargetMs;
+    const originalStartTime = appState.windowStartTime;
+    const originalPenalty = appState.appliedPenaltyMs;
 
     // Option 1 (Penalty 1): Recalculated from original target end
     appState.prolongingPenaltyMs = 2 * Math.max(0, now - originalTargetEnd);
@@ -590,6 +723,8 @@ function updateUI() {
         elBreakFastSection.classList.remove('hidden');
     }
 
+    // US-10: Render history
+    renderHistory();
 }
 
 // --- Event Listeners ---
@@ -615,6 +750,10 @@ function setupEventListeners() {
 
     if (elBtnBreakPremature) {
         elBtnBreakPremature.addEventListener('click', startEatingPrematurely);
+    }
+
+    if (elBtnToggleHistory) {
+        elBtnToggleHistory.addEventListener('click', () => toggleHistory());
     }
 
     if (elAppTitle) {
