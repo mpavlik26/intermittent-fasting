@@ -123,6 +123,7 @@
     - User stories:
        - US-8:
          - Me as the user who would like to have Debug control section hidden (meaning not just collapsed) and have it displayed only when really needed I'd like to have there an option to show and then hide the Debug control section using 5 quick taps on the "FASTING TRACKER" label (name of the application)
+           - The Debug control section is hidden by defaults
        - US-9:
          - As the user I'd like to see at any time that any time presented (e.g. starting or finishing time of the particular window, predictions, ...) is in the different day (previous / next / or even more days before / from now). So, if this is a case, I want to see there a 2-character long abbreviation of the day of week (as an upper index next to the time)
            - This has to work really dynamically what means that if I'm in the window that's going through midnight, there's a day superscript by the finish time of the particular window and there's no day superscript at the starting time of that window and at the midnight this actually has to switch
@@ -145,6 +146,12 @@
            - windows history should be accessible using a button or link that's placed under "Add retrospective log button" and the new Windows history area is scrollable with max-height of 500px
            - at the case of the prolonged Eating window, I'd like to have the record for the prolonged eating window untouched by the prolonging at all (it means e.g. if the Eating window should end at 23:00, but I prolonged it at 23:30, the history record for the prolonged eating window will still have 23:00 as the time of the Eating window end). Penalty applied for this prolongation will be however displayed at the record corresponding to the restarted Fasting window for sure. There will be also just one Fasting record in the history at this case - the restarted one. I don't want to see there a Fasting record from 23:00 till 23:30. I just want to see there a record for restarted Fasting that started at 23:30.
            - at the case of the premature start of the Eating window, I'd like to see again the Fasting window times untouched by this premature start (it means e.g. if the Fasting window should finish at 7:00, but I started the Eating window prematurely already at 6:30, then I'd like to have still 7:00 as the time of the end of the Fasting window). Penalty applied for the premature start of the Eating window will then be displayed at the history record related to the next Fasting window as it's applied there.
+       - US-11:
+         - As the user coming to the aplication I'd like to have the option to set the 1st window, what means:
+           - which of the 3 windows (Potential eating, Eating, Fasting) I'm currently in
+           - when the window starts and when it finishes (I cannot set it for Potential eating window as it finishes automatically with the 1st meal)
+         - As the user who is using the application I'd like to have the option to reset the current window and manually set it exactly in the same way I can do it at the start of the application. The only difference is in the fact, this option is used just from time to time, so it shouldn't be too prominent for the user
+        
 
 
 
