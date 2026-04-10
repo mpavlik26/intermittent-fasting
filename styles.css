@@ -57,6 +57,10 @@ body {
     margin-bottom: 0.5rem;
     letter-spacing: 1px;
     text-transform: uppercase;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
 }
 
 .current-time-container {
