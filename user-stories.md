@@ -147,9 +147,11 @@
            - at the case of the prolonged Eating window, I'd like to have the record for the prolonged eating window untouched by the prolonging at all (it means e.g. if the Eating window should end at 23:00, but I prolonged it at 23:30, the history record for the prolonged eating window will still have 23:00 as the time of the Eating window end). Penalty applied for this prolongation will be however displayed at the record corresponding to the restarted Fasting window for sure. There will be also just one Fasting record in the history at this case - the restarted one. I don't want to see there a Fasting record from 23:00 till 23:30. I just want to see there a record for restarted Fasting that started at 23:30.
            - at the case of the premature start of the Eating window, I'd like to see again the Fasting window times untouched by this premature start (it means e.g. if the Fasting window should finish at 7:00, but I started the Eating window prematurely already at 6:30, then I'd like to have still 7:00 as the time of the end of the Fasting window). Penalty applied for the premature start of the Eating window will then be displayed at the history record related to the next Fasting window as it's applied there.
        - US-11:
-         - As the user coming to the aplication I'd like to have the option to set the 1st window, what means:
+         - As the user coming to the aplication I have to set the 1st window, what means:
            - which of the 3 windows (Potential eating, Eating, Fasting) I'm currently in
            - when the window starts and when it finishes (I cannot set it for Potential eating window as it finishes automatically with the 1st meal)
+             - the default finish time for Eating and Fasting windows will be 8 and 16 hours respectively later than their starts. User has howerver the possibility to change it anyhow
+             - the system have to deal correctly with the windows spreading across midnight (if the finish time is lower then the starting time it automatically means the finish time is the next day)
          - As the user who is using the application I'd like to have the option to reset the current window and manually set it exactly in the same way I can do it at the start of the application. The only difference is in the fact, this option is used just from time to time, so it shouldn't be too prominent for the user
         
 
