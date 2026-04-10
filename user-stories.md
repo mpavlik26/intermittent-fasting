@@ -150,9 +150,10 @@
          - As the user coming to the aplication I have to set the 1st window, what means:
            - which of the 3 windows (Potential eating, Eating, Fasting) I'm currently in
            - when the window starts and when it finishes (I cannot set it for Potential eating window as it finishes automatically with the 1st meal)
-             - the default finish time for Eating and Fasting windows will be 8 and 16 hours respectively later than their starts. User has howerver the possibility to change it anyhow
+             - the default finish time for Eating and Fasting windows will be 8 and 16 hours respectively later than their starts. User has however the possibility to change it anyhow
              - the system have to deal correctly with the windows spreading across midnight (if the finish time is lower then the starting time it automatically means the finish time is the next day)
          - As the user who is using the application I'd like to have the option to reset the current window and manually set it exactly in the same way I can do it at the start of the application. The only difference is in the fact, this option is used just from time to time, so it shouldn't be too prominent for the user
+           - From the Windows history point of view the current window will remain in the Windows history with the original span (to correspond with the current logic) and the new redefined window (or even the 1st window) will be added to the history at the time when it finishes. That record however will have a special badge "manual" to distinguish this manually created window from other windows.
         
 
 
