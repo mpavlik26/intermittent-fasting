@@ -362,18 +362,19 @@ body {
 
 .btn {
     width: 100%;
-    padding: 1rem;
-    border-radius: 16px;
-    border: none;
-    font-family: inherit;
+    padding: 1.2rem 2rem;
+    border-radius: 1rem;
     font-size: 1.1rem;
     font-weight: 600;
     cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
     gap: 0.75rem;
-    transition: all 0.2s ease;
+    border: none;
+    outline: none;
+    touch-action: manipulation;
 }
 
 .primary-btn {
