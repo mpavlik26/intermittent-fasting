@@ -123,6 +123,7 @@
     - User stories:
        - US-8:
          - Me as the user who would like to have Debug control section hidden (meaning not just collapsed) and have it displayed only when really needed I'd like to have there an option to show and then hide the Debug control section using 5 quick taps on the "FASTING TRACKER" label (name of the application)
+           - The Debug control section is hidden by defaults
        - US-9:
          - As the user I'd like to see at any time that any time presented (e.g. starting or finishing time of the particular window, predictions, ...) is in the different day (previous / next / or even more days before / from now). So, if this is a case, I want to see there a 2-character long abbreviation of the day of week (as an upper index next to the time)
            - This has to work really dynamically what means that if I'm in the window that's going through midnight, there's a day superscript by the finish time of the particular window and there's no day superscript at the starting time of that window and at the midnight this actually has to switch
@@ -145,6 +146,22 @@
            - windows history should be accessible using a button or link that's placed under "Add retrospective log button" and the new Windows history area is scrollable with max-height of 500px
            - at the case of the prolonged Eating window, I'd like to have the record for the prolonged eating window untouched by the prolonging at all (it means e.g. if the Eating window should end at 23:00, but I prolonged it at 23:30, the history record for the prolonged eating window will still have 23:00 as the time of the Eating window end). Penalty applied for this prolongation will be however displayed at the record corresponding to the restarted Fasting window for sure. There will be also just one Fasting record in the history at this case - the restarted one. I don't want to see there a Fasting record from 23:00 till 23:30. I just want to see there a record for restarted Fasting that started at 23:30.
            - at the case of the premature start of the Eating window, I'd like to see again the Fasting window times untouched by this premature start (it means e.g. if the Fasting window should finish at 7:00, but I started the Eating window prematurely already at 6:30, then I'd like to have still 7:00 as the time of the end of the Fasting window). Penalty applied for the premature start of the Eating window will then be displayed at the history record related to the next Fasting window as it's applied there.
+       - US-11:
+         - As the user coming to the aplication I have to set the 1st window, what means:
+           - which of the 3 windows (Potential eating, Eating, Fasting) I'm currently in
+           - when the window starts and when it finishes (I cannot set it for Potential eating window as it finishes automatically with the 1st meal)
+             - the default finish time for Eating and Fasting windows will be 8 and 16 hours respectively later than their starts. User has however the possibility to change it anyhow
+             - the system have to deal correctly with the windows spreading across midnight (if the finish time is lower then the starting time it automatically means the finish time is the next day)
+             - I want to enter just a time. I don't want to be bothered by selecting of a date. It's always supposed the current time is inside the window span. If there is no way how the current time can be inside the span user entered an error meesage is displayed and the user cannot Apply those times as the start and finish time of the particular window.
+               - expample:
+                 - I enter start time at 16:00 and finish time at 4:00, then:
+                   - if it's 22:00 now, I meant the window starts at 16:00 of today and finishes at 4:00 of tomorrow
+                   - if it's 2:00 now, I meant the window starts at 16:00 of yesterday and finishes at 4:00 of today
+                   - if it's 6:00 now, an error message has to be displayed as this window span is not valid
+         - As the user who is using the application I'd like to have the option to reset the current window and manually set it exactly in the same way I can do it at the start of the application. The only difference is in the fact, this option is used just from time to time, so it shouldn't be too prominent for the user
+           - If there's a new section used for this manual setting of the current window and there are also other sections for Windows history (user story US-10) and adding retrospective records (user story US-B5), only one of them is expanded at a time. Expansion of such a section always leads to collapse the other two sections.
+           - From the Windows history point of view the current window will remain in the Windows history with the original span (to correspond with the current logic) and the new redefined window (or even the 1st window) will be added to the history at the time when it finishes. That record however will have a special badge "manual" to distinguish this manually created window from other windows.
+        
 
 
 
