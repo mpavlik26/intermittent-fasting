@@ -105,6 +105,7 @@ function loadState() {
             console.error('Failed to load state', e);
         }
     }
+    appState.isDebugUnlocked = false; // US-8: Always hide by default on load
     updateUI();
 }
 
