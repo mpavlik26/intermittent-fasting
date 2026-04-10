@@ -10,10 +10,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=5">
     
     <!-- PWA Tags -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json?v=5">
     <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -195,6 +195,21 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- US-11: Manual Session Control -->
+                <div class="manual-log-section">
+                    <button id="btn-toggle-manual" class="btn secondary-btn toggle-btn">
+                        <span class="btn-text">Manual Session Control</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="chevron-icon">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div id="manual-content" class="log-content-wrapper collapsed">
+                        <div id="manual-form-target"></div>
+                    </div>
+                </div>
             </div>
         </main>
 
@@ -210,7 +225,41 @@
         </section>
     </div>
 
-    <script src="app.js"></script>
+    <div id="setup-overlay" class="setup-overlay hidden">
+        <div class="setup-content">
+            <h2>Welcome</h2>
+            <p>Please set your initial fasting window to begin.</p>
+            <div id="setup-form-container"></div>
+            <!-- We will inject the manual-form-template here via JS -->
+        </div>
+    </div>
+
+    <!-- Templates -->
+    <template id="manual-form-template">
+        <div class="manual-session-section">
+            <div class="manual-grid">
+                <div class="input-box">
+                    <label for="manual-type">Window Type</label>
+                    <select id="manual-type">
+                        <option value="potential">Potential Eating</option>
+                        <option value="eating">Eating Window</option>
+                        <option value="fasting">Fasting Window</option>
+                    </select>
+                </div>
+                <div class="input-box">
+                    <label for="manual-start">Start Time</label>
+                    <input type="time" id="manual-start">
+                </div>
+                <div class="input-box" id="manual-end-box">
+                    <label for="manual-end">Finish Time</label>
+                    <input type="time" id="manual-end">
+                </div>
+                <button id="btn-apply-manual" class="btn primary-btn">Apply Settings</button>
+            </div>
+        </div>
+    </template>
+
+    <script src="app.js?v=5"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

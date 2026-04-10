@@ -152,7 +152,14 @@
            - when the window starts and when it finishes (I cannot set it for Potential eating window as it finishes automatically with the 1st meal)
              - the default finish time for Eating and Fasting windows will be 8 and 16 hours respectively later than their starts. User has however the possibility to change it anyhow
              - the system have to deal correctly with the windows spreading across midnight (if the finish time is lower then the starting time it automatically means the finish time is the next day)
+             - I want to enter just a time. I don't want to be bothered by selecting of a date. It's always supposed the current time is inside the window span. If there is no way how the current time can be inside the span user entered an error meesage is displayed and the user cannot Apply those times as the start and finish time of the particular window.
+               - expample:
+                 - I enter start time at 16:00 and finish time at 4:00, then:
+                   - if it's 22:00 now, I meant the window starts at 16:00 of today and finishes at 4:00 of tomorrow
+                   - if it's 2:00 now, I meant the window starts at 16:00 of yesterday and finishes at 4:00 of today
+                   - if it's 6:00 now, an error message has to be displayed as this window span is not valid
          - As the user who is using the application I'd like to have the option to reset the current window and manually set it exactly in the same way I can do it at the start of the application. The only difference is in the fact, this option is used just from time to time, so it shouldn't be too prominent for the user
+           - If there's a new section used for this manual setting of the current window and there are also other sections for Windows history (user story US-10) and adding retrospective records (user story US-B5), only one of them is expanded at a time. Expansion of such a section always leads to collapse the other two sections.
            - From the Windows history point of view the current window will remain in the Windows history with the original span (to correspond with the current logic) and the new redefined window (or even the 1st window) will be added to the history at the time when it finishes. That record however will have a special badge "manual" to distinguish this manually created window from other windows.
         
 
