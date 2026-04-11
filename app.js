@@ -927,7 +927,7 @@ function manualSetWindow(type, startTimeMs, endTimeMs) {
 
     appState.currentState = type;
     appState.windowStartTime = startTimeMs;
-    appState.windowEndTime = endTimeMs;
+    appState.windowEndTime = (type === STATES.POTENTIAL_EATING) ? startTimeMs : endTimeMs;
     appState.lastMealTime = (type !== STATES.POTENTIAL_EATING) ? startTimeMs : null;
     appState.isManualSession = true;
 
