@@ -161,9 +161,4 @@
          - As the user who is using the application I'd like to have the option to reset the current window and manually set it exactly in the same way I can do it at the start of the application. The only difference is in the fact, this option is used just from time to time, so it shouldn't be too prominent for the user
            - If there's a new section used for this manual setting of the current window and there are also other sections for Windows history (user story US-10) and adding retrospective records (user story US-B5), only one of them is expanded at a time. Expansion of such a section always leads to collapse the other two sections.
            - From the Windows history point of view the current window will remain in the Windows history with the original span (to correspond with the current logic) and the new redefined window (or even the 1st window) will be added to the history at the time when it finishes. That record however will have a special badge "manual" to distinguish this manually created window from other windows.
-        
-
-
-
-       
-         
+		   

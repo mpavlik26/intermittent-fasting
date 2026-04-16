@@ -1,0 +1,87 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Overview
+
+A Progressive Web App (PWA) for tracking intermittent fasting (16:8 protocol). No build system, no framework, no dependencies — pure vanilla JS/HTML/CSS served as static files.
+
+## Running Locally
+
+No package.json or build step. Serve with any static HTTP server:
+
+```bash
+python -m http.server 8000
+# or
+npx serve .
+```
+
+Open `index.html` directly in a browser also works, though PWA features (Service Worker) require HTTP/HTTPS.
+
+## Testing
+
+There is no automated test suite. Testing is manual via the browser UI. The app has built-in debug controls (hidden by default):
+
+- **Unlock debug panel:** Tap/click the "FASTING TRACKER" title 5 times
+- **Debug buttons:** +1 Min, +1 Hour, +8 Hours, Reset App — these shift `timeOffsetMs` in `appState` to simulate time progression
+- **Reset state:** "Reset App" button clears `localStorage` and resets to initial state
+
+All user stories and their test scenarios are documented in `user-stories.md`.
+
+## Architecture
+
+Single-page app — three files contain all logic:
+
+| File | Role |
+|------|------|
+| `app.js` | All application logic (~950 lines) |
+| `index.html` | UI structure and HTML templates |
+| `styles.css` | All styling including CSS variables and state-based colors |
+| `sw.js` | Service Worker (cache-first PWA offline support) |
+
+### State Machine
+
+The app cycles through three states:
+
+```
+potential → (first meal logged) → eating → (last meal logged) → fasting → (16h elapsed) → potential
+```
+
+All state lives in `appState` (a plain JS object) and is persisted to `localStorage` under key `fastingTrackerState`. Key state fields:
+
+- `currentState`: `'potential' | 'eating' | 'fasting'`
+- `windowStartTime` / `windowEndTime`: epoch ms boundaries for the current window
+- `fastingBonusMs` / `eatingBonusMs`: rewards earned from US-3/US-4 logic
+- `prolongingPenaltyMs` / `prematureStartPenaltyMs`: penalties from US-7
+- `timeOffsetMs`: debug time shift applied via `getCurrentTime()`
+- `isManualSession`: flag set when window was created via manual setup (US-11)
+- `history`: array of completed window records
+
+### Core Loop
+
+`tick()` runs every 1 second via `setInterval`. It calls `getCurrentTime()` (real time + `timeOffsetMs`), checks for window expiry/transitions, then calls `updateUI()` to re-render the display.
+
+### Key Functions
+
+- `loadState()` / `saveState()` — read/write localStorage
+- `transitionToEating()` / `transitionToFasting()` / `transitionToPotential()` — state machine transitions, each recalculates window boundaries applying bonuses/penalties
+- `updateUI()` — full UI re-render based on current state (called every tick)
+- `showSetupOverlay()` / `manualSetWindow()` — US-11 manual session setup
+- `addToHistory()` / `renderHistory()` — US-10 history persistence and display
+
+### Bonus/Penalty System
+
+- **US-3 (Fasting bonus):** Fasting beyond 16 hours earns bonus time added to next eating window
+- **US-4 (Eating bonus):** Finishing eating early earns bonus time added to next eating window
+- **US-7 (Breaking fast penalty):** User chooses to either prolong current eating window or start new eating window early — both options apply a penalty reducing the next eating window
+
+### UI Conventions
+
+- Collapsible sections auto-collapse when another section is expanded
+- Day-of-week labels (2-char, e.g. "Mo") are shown on times from a different day than current (US-9)
+- State colors and labels are controlled via CSS custom properties on the root element
+- Cache-busting via `?v=5` on script/CSS `<link>` tags in `index.html`
+
+## Development Workflow
+
+Feature development follows the user stories in `user-stories.md`. Each user story (US-B1 through US-11) maps to a dedicated branch and PR. The `master` branch is the main branch.
