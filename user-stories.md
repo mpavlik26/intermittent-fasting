@@ -161,4 +161,19 @@
          - As the user who is using the application I'd like to have the option to reset the current window and manually set it exactly in the same way I can do it at the start of the application. The only difference is in the fact, this option is used just from time to time, so it shouldn't be too prominent for the user
            - If there's a new section used for this manual setting of the current window and there are also other sections for Windows history (user story US-10) and adding retrospective records (user story US-B5), only one of them is expanded at a time. Expansion of such a section always leads to collapse the other two sections.
            - From the Windows history point of view the current window will remain in the Windows history with the original span (to correspond with the current logic) and the new redefined window (or even the 1st window) will be added to the history at the time when it finishes. That record however will have a special badge "manual" to distinguish this manually created window from other windows.
-		   
+- The seventh slice will have the following background and user stories:
+     - Background:
+       - I want to add to the application the capability of predictions that would help me better plan my eating and fasting windows in advance.
+    - User stories:
+      - US 12:
+        - I want to see what happens with the next window if I behave in the current window in specific way. I want to see in Potential Eating window and Eating window an appropriate visualisation for modeling purposes where the output is always the modeled Fasting window interval. I want to have there a slider with 2 toggles. There are always 2 toggles - the 1st one represents the time of the first meal taken and the 2nd one the time of the last meal eaten. The 2nd toggle cannot be moved before the 1st one and vice versa. There will be a link accessing this visualisation as the last text of the "Upcoming windows forecast" section. The behaviour based on the window type I'm currently in is the following:
+          - If I'm in the potential eating window:
+            - slider start time is the starting time of the potential eating window
+            - slider end time is the current time (time when I opened the visualisation) + 24hours and it's not extended during the time of the display (I don't want to extend it if I look at the visualisation e.g. 1 hour)
+            - 1st toggle representing the time of the first meal taken is movable by the user and it's initially set to the current time
+            - 2nd toggle representing the time of the last meal eaten is movable by the user as well and it's initially set to the current time + 8 hours (default length of the eating window)
+          - If I'm in the eating window:
+            - slider start time is the start time of the eating window
+            - slider end time is the end time of the eating window
+            - 1st toggle representing the time of the first meal taken is at the start slider position and it's not movable (because I've already had a first meal as the Eating window has started)
+            - 2nd toggle representing the time of the last meal eaten is movable by the user and it's set initially to the time of the Last meal taken (if there is any) or to the current time if there was no Last meal explicitly logged
