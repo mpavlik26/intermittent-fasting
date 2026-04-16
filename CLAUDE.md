@@ -8,7 +8,7 @@ A Progressive Web App (PWA) for tracking intermittent fasting (16:8 protocol). N
 
 ## Running Locally
 
-No package.json or build step. Serve with any static HTTP server:
+Serve with any static HTTP server:
 
 ```bash
 python -m http.server 8000
@@ -20,11 +20,52 @@ Open `index.html` directly in a browser also works, though PWA features (Service
 
 ## Testing
 
-There is no automated test suite. Testing is manual via the browser UI. The app has built-in debug controls (hidden by default):
+### Automated (Playwright E2E)
+
+Install once:
+```bash
+npm install
+npx playwright install chromium
+```
+
+Run all tests:
+```bash
+npm test
+```
+
+Run a single test file:
+```bash
+npx playwright test tests/state-machine.spec.js
+```
+
+Run with visible browser:
+```bash
+npm run test:headed
+```
+
+Interactive UI mode (recommended for debugging):
+```bash
+npm run test:ui
+```
+
+Test files in `tests/`:
+
+| File | Covers |
+|------|--------|
+| `state-machine.spec.js` | Core cycle, initial setup overlay |
+| `bonus.spec.js` | US-3 fasting bonus, US-4 eating bonus |
+| `break-fast.spec.js` | US-7 prolong/premature-start penalties |
+| `history.spec.js` | US-10 records, Manual/Bonus/Penalty tags |
+| `manual-session.spec.js` | US-11 setup overlay, mid-session override |
+
+Time-based transitions are tested by calling `page.evaluate(() => { appState.timeOffsetMs += ms; tick(); })` — same mechanism as the in-app debug buttons but without needing to unlock the debug panel.
+
+### Manual (browser)
+
+The app has built-in debug controls (hidden by default):
 
 - **Unlock debug panel:** Tap/click the "FASTING TRACKER" title 5 times
-- **Debug buttons:** +1 Min, +1 Hour, +8 Hours, Reset App — these shift `timeOffsetMs` in `appState` to simulate time progression
-- **Reset state:** "Reset App" button clears `localStorage` and resets to initial state
+- **Debug buttons:** +1 Min, +1 Hour, +8 Hours, Reset App — shift `timeOffsetMs` in `appState`
 
 All user stories and their test scenarios are documented in `user-stories.md`.
 
