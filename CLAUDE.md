@@ -57,6 +57,7 @@ Test files in `tests/`:
 | `break-fast.spec.js` | US-7 prolong/premature-start penalties |
 | `history.spec.js` | US-10 records, Manual/Bonus/Penalty tags |
 | `manual-session.spec.js` | US-11 setup overlay, mid-session override |
+| `simulator.spec.js` | US-12 simulator visibility, slider state, calculation correctness, constraints |
 
 Time-based transitions are tested by calling `page.evaluate(() => { appState.timeOffsetMs += ms; tick(); })` — same mechanism as the in-app debug buttons but without needing to unlock the debug panel.
 
@@ -119,10 +120,14 @@ All state lives in `appState` (a plain JS object) and is persisted to `localStor
 ### UI Conventions
 
 - Collapsible sections auto-collapse when another section is expanded
-- Day-of-week labels (2-char, e.g. "Mo") are shown on times from a different day than current (US-9)
+- Day-of-week labels (2-char, e.g. "Mo") are shown on times from a different day than current (US-9). **Every time value rendered in the UI must use `renderTime(ms)` (returns HTML with an optional `<sup>` day label) and be set via `.innerHTML`, not `formatTimeOnly(ms)` + `.textContent`.** `formatTimeOnly` is only for contexts where HTML cannot be used (e.g. plain-text attributes).
 - State colors and labels are controlled via CSS custom properties on the root element
-- Cache-busting via `?v=5` on script/CSS `<link>` tags in `index.html`
+- Cache-busting via `?v=6` on script/CSS `<link>` tags in `index.html`
 
 ## Development Workflow
 
 Feature development follows the user stories in `user-stories.md`. Each user story (US-B1 through US-11) maps to a dedicated branch and PR. The `master` branch is the main branch.
+
+## E2E Test Requirement
+
+Every implementation change or new feature **must** be accompanied by E2E test coverage. When proposing or executing an implementation plan, always include the E2E test plan as an explicit part of it — covering visibility, initial state, calculation correctness, and edge cases relevant to the feature. Whether to add tests to an existing spec file or create a new one is a matter of judgment and convenience.

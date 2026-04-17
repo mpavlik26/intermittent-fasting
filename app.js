@@ -27,6 +27,9 @@ let appState = {
     history: [] // US-10: History of windows
 };
 
+// US-12: Simulator state (not persisted)
+let simState = { sliderStartMs: 0, sliderEndMs: 0, lastMealMinMins: 0 };
+
 // --- DOM Elements ---
 const elCurrentTime = document.getElementById('current-time');
 const elStatusCard = document.getElementById('status-card');
@@ -80,6 +83,19 @@ const elBreakPrematureInterval = document.getElementById('break-premature-interv
 
 const elAppTitle = document.getElementById('app-title');
 const elDebugSection = document.querySelector('.debug-controls');
+
+// US-12: Simulator DOM Elements
+const elSimOverlay = document.getElementById('simulator-overlay');
+const elSimLabelStart = document.getElementById('sim-label-start');
+const elSimLabelEnd = document.getElementById('sim-label-end');
+const elSliderFirstMeal = document.getElementById('slider-first-meal');
+const elSliderLastMeal = document.getElementById('slider-last-meal');
+const elSimRangeFill = document.getElementById('sim-range-fill');
+const elSimTimeFirst = document.getElementById('sim-time-first');
+const elSimTimeLast = document.getElementById('sim-time-last');
+const elSimFastStart = document.getElementById('sim-fast-start');
+const elSimFastEnd = document.getElementById('sim-fast-end');
+const elSimFastDuration = document.getElementById('sim-fast-duration');
 
 // US-10 DOM Elements
 const elBtnToggleHistory = document.getElementById('btn-toggle-history');
@@ -517,6 +533,121 @@ function prolongEatingAndStartFast() {
     updateUI();
 }
 
+// --- US-12: Fasting Window Simulator ---
+
+function openSimulator() {
+    const now = getCurrentTime();
+
+    // In potential state windowStartTime is the fasting window start — the potential
+    // eating window begins at windowEndTime (= fasting window end).
+    simState.sliderStartMs = (appState.currentState === STATES.POTENTIAL_EATING)
+        ? appState.windowEndTime
+        : appState.windowStartTime;
+    simState.sliderEndMs = (appState.currentState === STATES.POTENTIAL_EATING)
+        ? now + 24 * 60 * 60 * 1000
+        : appState.windowEndTime;
+
+    const totalMins = Math.floor((simState.sliderEndMs - simState.sliderStartMs) / 60000);
+    elSliderFirstMeal.min = 0;
+    elSliderFirstMeal.max = totalMins;
+    elSliderLastMeal.min = 0;
+    elSliderLastMeal.max = totalMins;
+
+    elSimLabelStart.innerHTML = renderTime(simState.sliderStartMs);
+    elSimLabelEnd.innerHTML = renderTime(simState.sliderEndMs);
+
+    if (appState.currentState === STATES.POTENTIAL_EATING) {
+        elSliderFirstMeal.disabled = false;
+        const initFirst = Math.max(0, Math.floor((now - simState.sliderStartMs) / 60000));
+        const initLast = Math.min(initFirst + 480, totalMins);
+        elSliderFirstMeal.value = initFirst;
+        elSliderLastMeal.value = initLast;
+    } else {
+        // Eating: first meal is fixed at window start
+        elSliderFirstMeal.disabled = true;
+        elSliderFirstMeal.value = 0;
+        const baseMs = appState.lastMealTime || now;
+        const initLast = Math.min(Math.max(0, Math.floor((baseMs - simState.sliderStartMs) / 60000)), totalMins);
+        elSliderLastMeal.value = initLast;
+        // If a last meal was logged, its position is the lower bound — cannot model eating earlier
+        simState.lastMealMinMins = appState.lastMealTime ? initLast : 0;
+    }
+
+    updateSimulatorOutput();
+    elSimOverlay.classList.remove('hidden');
+}
+
+function closeSimulator() {
+    elSimOverlay.classList.add('hidden');
+}
+
+function calcSimulatedFast(firstMealMs, lastMealMs) {
+    let effectiveEatingEnd;
+
+    if (appState.currentState === STATES.POTENTIAL_EATING) {
+        let fastingBonus = 0;
+        if (appState.windowEndTime && firstMealMs > appState.windowEndTime) {
+            fastingBonus = Math.floor((firstMealMs - appState.windowEndTime) / 2);
+        }
+        effectiveEatingEnd = firstMealMs + DURATION_EATING_MS + fastingBonus;
+    } else {
+        effectiveEatingEnd = appState.windowEndTime;
+    }
+
+    const eatingBonus = lastMealMs < effectiveEatingEnd
+        ? Math.floor((effectiveEatingEnd - lastMealMs) / 2)
+        : 0;
+
+    const fastStart = lastMealMs;
+    const fastEnd = lastMealMs + DURATION_FASTING_MS - eatingBonus + appState.prematureStartPenaltyMs;
+    return { fastStart, fastEnd, fastDurationMs: fastEnd - fastStart };
+}
+
+function updateSimulatorOutput() {
+    const totalMins = parseInt(elSliderFirstMeal.max);
+    const firstMins = parseInt(elSliderFirstMeal.value);
+    const lastMins = parseInt(elSliderLastMeal.value);
+
+    const firstMealMs = simState.sliderStartMs + firstMins * 60000;
+    const lastMealMs = simState.sliderStartMs + lastMins * 60000;
+
+    elSimTimeFirst.innerHTML = renderTime(firstMealMs);
+    elSimTimeLast.innerHTML = renderTime(lastMealMs);
+
+    const fillLeft = totalMins > 0 ? (firstMins / totalMins) * 100 : 0;
+    const fillRight = totalMins > 0 ? 100 - (lastMins / totalMins) * 100 : 100;
+    elSimRangeFill.style.left = `${fillLeft}%`;
+    elSimRangeFill.style.right = `${fillRight}%`;
+
+    const { fastStart, fastEnd, fastDurationMs } = calcSimulatedFast(firstMealMs, lastMealMs);
+    elSimFastStart.innerHTML = renderTime(fastStart);
+    elSimFastEnd.innerHTML = renderTime(fastEnd);
+    elSimFastDuration.textContent = formatSimDuration(fastDurationMs);
+}
+
+// Returns the maximum allowed position (in minutes) for toggle2 in potential state.
+// toggle2 cannot go past firstMeal + eating window length (8h + US-3 fasting bonus).
+function getMaxLastMealMins() {
+    const firstMins = parseInt(elSliderFirstMeal.value);
+    const firstMealMs = simState.sliderStartMs + firstMins * 60000;
+    let fastingBonus = 0;
+    if (appState.windowEndTime && firstMealMs > appState.windowEndTime) {
+        fastingBonus = Math.floor((firstMealMs - appState.windowEndTime) / 2);
+    }
+    const maxLastMealMs = firstMealMs + DURATION_EATING_MS + fastingBonus;
+    return Math.min(
+        Math.floor((maxLastMealMs - simState.sliderStartMs) / 60000),
+        parseInt(elSliderLastMeal.max)
+    );
+}
+
+function formatSimDuration(ms) {
+    const totalMins = Math.round(ms / 60000);
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
 // --- Ticker ---
 function tick() {
     const now = getCurrentTime();
@@ -788,6 +919,42 @@ function setupEventListeners() {
     document.getElementById('btn-debug-add-hour').addEventListener('click', () => addTimeOffset(60 * 60 * 1000));
     document.getElementById('btn-debug-add-8hour').addEventListener('click', () => addTimeOffset(8 * 60 * 60 * 1000));
     document.getElementById('btn-debug-reset').addEventListener('click', resetState);
+
+    // US-12: Simulator
+    document.getElementById('btn-open-simulator').addEventListener('click', (e) => {
+        e.preventDefault();
+        openSimulator();
+    });
+    document.getElementById('btn-close-simulator').addEventListener('click', closeSimulator);
+    elSliderFirstMeal.addEventListener('input', () => {
+        if (parseInt(elSliderFirstMeal.value) > parseInt(elSliderLastMeal.value)) {
+            elSliderLastMeal.value = elSliderFirstMeal.value;
+        }
+        if (appState.currentState === STATES.POTENTIAL_EATING) {
+            const maxLast = getMaxLastMealMins();
+            if (parseInt(elSliderLastMeal.value) > maxLast) {
+                elSliderLastMeal.value = maxLast;
+            }
+        }
+        updateSimulatorOutput();
+    });
+    elSliderLastMeal.addEventListener('input', () => {
+        if (parseInt(elSliderLastMeal.value) < parseInt(elSliderFirstMeal.value)) {
+            elSliderLastMeal.value = elSliderFirstMeal.value;
+        }
+        if (appState.currentState === STATES.POTENTIAL_EATING) {
+            const maxLast = getMaxLastMealMins();
+            if (parseInt(elSliderLastMeal.value) > maxLast) {
+                elSliderLastMeal.value = maxLast;
+            }
+        }
+        if (appState.currentState === STATES.EATING && simState.lastMealMinMins > 0) {
+            if (parseInt(elSliderLastMeal.value) < simState.lastMealMinMins) {
+                elSliderLastMeal.value = simState.lastMealMinMins;
+            }
+        }
+        updateSimulatorOutput();
+    });
 }
 
 function addTimeOffset(ms) {

@@ -870,3 +870,306 @@ body {
     line-height: 1.5;
     margin-bottom: 0.5rem;
 }
+
+/* --- US-12: Fasting Window Simulator --- */
+
+.simulator-link {
+    display: block;
+    text-align: center;
+    margin-top: 1rem;
+    color: var(--state-potential);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.simulator-link:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+.simulator-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.simulator-overlay.hidden {
+    display: none;
+}
+
+.simulator-content {
+    width: 100%;
+    max-width: 440px;
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+}
+
+.simulator-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.simulator-title {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+}
+
+.simulator-close {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.simulator-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--text-main);
+}
+
+/* Dual Range Slider */
+.sim-slider-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sim-edge-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.dual-slider-container {
+    position: relative;
+    height: 44px;
+}
+
+.dual-slider-track {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.dual-slider-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, var(--state-eating), var(--state-fasting));
+    border-radius: 3px;
+    left: 0%;
+    right: 100%;
+}
+
+.dual-range {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    height: 44px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    pointer-events: none;
+    margin: 0;
+}
+
+.dual-range:focus {
+    outline: none;
+}
+
+.dual-range::-webkit-slider-runnable-track {
+    background: transparent;
+    height: 6px;
+}
+
+.dual-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.dual-range::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+.dual-range-first {
+    z-index: 3;
+}
+
+.dual-range-last {
+    z-index: 4;
+}
+
+.dual-range-first::-webkit-slider-thumb {
+    background: var(--state-eating);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.dual-range-last::-webkit-slider-thumb {
+    background: var(--state-fasting);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+
+/* Firefox */
+.dual-range::-moz-range-track {
+    background: transparent;
+    height: 6px;
+    border: none;
+}
+
+.dual-range::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.dual-range-first::-moz-range-thumb {
+    background: var(--state-eating);
+}
+
+.dual-range-last::-moz-range-thumb {
+    background: var(--state-fasting);
+}
+
+.dual-range:disabled::-webkit-slider-thumb {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.dual-range:disabled::-moz-range-thumb {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.sim-handle-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sim-handle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.sim-handle-label strong {
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+}
+
+.sim-handle-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.dot-first {
+    background: var(--state-eating);
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+}
+
+.dot-last {
+    background: var(--state-fasting);
+    box-shadow: 0 0 5px rgba(245, 158, 11, 0.5);
+}
+
+/* Simulator Output */
+.sim-output {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+}
+
+.sim-output-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.sim-output-times {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.sim-output .time-highlight {
+    color: var(--state-fasting);
+    font-size: 1.4rem;
+}
+
+.sim-arrow {
+    color: var(--text-muted);
+    font-weight: 300;
+    font-size: 1.2rem;
+}
+
+.sim-output-duration {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.sim-output-duration strong {
+    color: var(--text-main);
+}

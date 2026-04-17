@@ -10,10 +10,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=5">
+    <link rel="stylesheet" href="styles.css?v=6">
     
     <!-- PWA Tags -->
-    <link rel="manifest" href="manifest.json?v=5">
+    <link rel="manifest" href="manifest.json?v=6">
     <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -117,6 +117,7 @@
                             <span id="forecast-fasting-end-now" class="time-highlight">--:--</span>.
                         </p>
                     </div>
+                    <a id="btn-open-simulator" class="simulator-link" href="#">Model next fasting window →</a>
                 </div>
 
                 <!-- US-7: Breaking Fast Section -->
@@ -225,6 +226,54 @@
         </section>
     </div>
 
+    <!-- US-12: Fasting Window Simulator -->
+    <div id="simulator-overlay" class="simulator-overlay hidden">
+        <div class="simulator-content">
+            <div class="simulator-header">
+                <h3 class="simulator-title">Fasting Window Simulator</h3>
+                <button id="btn-close-simulator" class="simulator-close" aria-label="Close simulator">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="sim-slider-section">
+                <div class="sim-edge-labels">
+                    <span id="sim-label-start" class="sim-edge-label">--:--</span>
+                    <span id="sim-label-end" class="sim-edge-label">--:--</span>
+                </div>
+                <div class="dual-slider-container">
+                    <div class="dual-slider-track">
+                        <div id="sim-range-fill" class="dual-slider-fill"></div>
+                    </div>
+                    <input type="range" id="slider-first-meal" class="dual-range dual-range-first" min="0" max="1440" value="0">
+                    <input type="range" id="slider-last-meal" class="dual-range dual-range-last" min="0" max="1440" value="480">
+                </div>
+                <div class="sim-handle-labels">
+                    <div class="sim-handle-label">
+                        <span class="sim-handle-dot dot-first"></span>
+                        First meal: <strong id="sim-time-first">--:--</strong>
+                    </div>
+                    <div class="sim-handle-label">
+                        <span class="sim-handle-dot dot-last"></span>
+                        Last meal: <strong id="sim-time-last">--:--</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="sim-output">
+                <div class="sim-output-label">Modeled Fasting Window</div>
+                <div class="sim-output-times">
+                    <span id="sim-fast-start" class="time-highlight">--:--</span>
+                    <span class="sim-arrow">→</span>
+                    <span id="sim-fast-end" class="time-highlight">--:--</span>
+                </div>
+                <div class="sim-output-duration">Duration: <strong id="sim-fast-duration">--</strong></div>
+            </div>
+        </div>
+    </div>
+
     <div id="setup-overlay" class="setup-overlay hidden">
         <div class="setup-content">
             <h2>Welcome</h2>
@@ -259,7 +308,7 @@
         </div>
     </template>
 
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
