@@ -172,8 +172,11 @@
             - slider end time is the current time (time when I opened the visualisation) + 24hours and it's not extended during the time of the display (I don't want to extend it if I look at the visualisation e.g. 1 hour)
             - 1st toggle representing the time of the first meal taken is movable by the user and it's initially set to the current time
             - 2nd toggle representing the time of the last meal eaten is movable by the user as well and it's initially set to the current time + 8 hours (default length of the eating window)
+              - 2nd toggle cannot be moved more far to the right than to the length of the eating window (including bonuses) and thus the expected length of the following fasting cannot exceed 16 hours (default fasting length)
           - If I'm in the eating window:
             - slider start time is the start time of the eating window
             - slider end time is the end time of the eating window
             - 1st toggle representing the time of the first meal taken is at the start slider position and it's not movable (because I've already had a first meal as the Eating window has started)
-            - 2nd toggle representing the time of the last meal eaten is movable by the user and it's set initially to the time of the Last meal taken (if there is any) or to the current time if there was no Last meal explicitly logged
+            - 2nd toggle representing the time of the last meal eaten is movable by the user
+              - if there was no last meal taken its initial position is set to the current time and it's possible to move it in both directions
+              - if there is last meal taken its initial position is set to the time when the last meal was taken and it's not possible to move it to the time before the initial position
