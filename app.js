@@ -96,6 +96,12 @@ const elSimTimeLast = document.getElementById('sim-time-last');
 const elSimFastStart = document.getElementById('sim-fast-start');
 const elSimFastEnd = document.getElementById('sim-fast-end');
 const elSimFastDuration = document.getElementById('sim-fast-duration');
+// US-13: Additional simulator DOM refs for dynamic labels
+const elSimTitle = document.getElementById('simulator-title');
+const elSimOutputLabel = document.getElementById('sim-output-label');
+const elSimLabelFirst = document.getElementById('sim-label-first');
+const elSimLabelLast = document.getElementById('sim-label-last');
+const elBtnOpenSimulator = document.getElementById('btn-open-simulator');
 
 // US-10 DOM Elements
 const elBtnToggleHistory = document.getElementById('btn-toggle-history');
@@ -538,14 +544,17 @@ function prolongEatingAndStartFast() {
 function openSimulator() {
     const now = getCurrentTime();
 
-    // In potential state windowStartTime is the fasting window start — the potential
-    // eating window begins at windowEndTime (= fasting window end).
-    simState.sliderStartMs = (appState.currentState === STATES.POTENTIAL_EATING)
-        ? appState.windowEndTime
-        : appState.windowStartTime;
-    simState.sliderEndMs = (appState.currentState === STATES.POTENTIAL_EATING)
-        ? now + 24 * 60 * 60 * 1000
-        : appState.windowEndTime;
+    if (appState.currentState === STATES.POTENTIAL_EATING) {
+        simState.sliderStartMs = appState.windowEndTime;
+        simState.sliderEndMs = now + 24 * 60 * 60 * 1000;
+    } else if (appState.currentState === STATES.EATING) {
+        simState.sliderStartMs = appState.windowStartTime;
+        simState.sliderEndMs = appState.windowEndTime;
+    } else {
+        // US-13: Fasting — model the next eating window
+        simState.sliderStartMs = appState.windowEndTime;
+        simState.sliderEndMs = simState.sliderStartMs + 24 * 60 * 60 * 1000;
+    }
 
     const totalMins = Math.floor((simState.sliderEndMs - simState.sliderStartMs) / 60000);
     elSliderFirstMeal.min = 0;
@@ -557,12 +566,20 @@ function openSimulator() {
     elSimLabelEnd.innerHTML = renderTime(simState.sliderEndMs);
 
     if (appState.currentState === STATES.POTENTIAL_EATING) {
+        elSimTitle.textContent = 'Fasting Window Simulator';
+        elSimOutputLabel.textContent = 'Modeled Fasting Window';
+        elSimLabelFirst.textContent = 'First meal';
+        elSimLabelLast.textContent = 'Last meal';
         elSliderFirstMeal.disabled = false;
         const initFirst = Math.max(0, Math.floor((now - simState.sliderStartMs) / 60000));
         const initLast = Math.min(initFirst + 480, totalMins);
         elSliderFirstMeal.value = initFirst;
         elSliderLastMeal.value = initLast;
-    } else {
+    } else if (appState.currentState === STATES.EATING) {
+        elSimTitle.textContent = 'Fasting Window Simulator';
+        elSimOutputLabel.textContent = 'Modeled Fasting Window';
+        elSimLabelFirst.textContent = 'First meal';
+        elSimLabelLast.textContent = 'Last meal';
         // Eating: first meal is fixed at window start
         elSliderFirstMeal.disabled = true;
         elSliderFirstMeal.value = 0;
@@ -571,6 +588,16 @@ function openSimulator() {
         elSliderLastMeal.value = initLast;
         // If a last meal was logged, its position is the lower bound — cannot model eating earlier
         simState.lastMealMinMins = appState.lastMealTime ? initLast : 0;
+    } else {
+        // US-13: Fasting — model next eating window with coupled toggles
+        elSimTitle.textContent = 'Eating Window Simulator';
+        elSimOutputLabel.textContent = 'Modeled Eating Window';
+        elSimLabelFirst.textContent = 'Eating starts';
+        elSimLabelLast.textContent = 'Eating ends';
+        elSliderFirstMeal.disabled = false;
+        elSliderFirstMeal.value = 0;
+        elSliderLastMeal.value = Math.min(480, totalMins);
+        simState.lastMealMinMins = 0;
     }
 
     updateSimulatorOutput();
@@ -603,6 +630,18 @@ function calcSimulatedFast(firstMealMs, lastMealMs) {
     return { fastStart, fastEnd, fastDurationMs: fastEnd - fastStart };
 }
 
+// US-13: Calculate the modeled eating window when in Fasting state.
+// firstMealMs = when user plans to eat after fasting ends (sliderStartMs = fasting window end).
+function calcSimulatedEating(firstMealMs) {
+    let fastingBonus = 0;
+    if (firstMealMs > simState.sliderStartMs) {
+        fastingBonus = Math.floor((firstMealMs - simState.sliderStartMs) / 2);
+    }
+    const eatStart = firstMealMs;
+    const eatEnd = firstMealMs + DURATION_EATING_MS + fastingBonus;
+    return { eatStart, eatEnd, eatDurationMs: eatEnd - eatStart };
+}
+
 function updateSimulatorOutput() {
     const totalMins = parseInt(elSliderFirstMeal.max);
     const firstMins = parseInt(elSliderFirstMeal.value);
@@ -619,10 +658,17 @@ function updateSimulatorOutput() {
     elSimRangeFill.style.left = `${fillLeft}%`;
     elSimRangeFill.style.right = `${fillRight}%`;
 
-    const { fastStart, fastEnd, fastDurationMs } = calcSimulatedFast(firstMealMs, lastMealMs);
-    elSimFastStart.innerHTML = renderTime(fastStart);
-    elSimFastEnd.innerHTML = renderTime(fastEnd);
-    elSimFastDuration.textContent = formatSimDuration(fastDurationMs);
+    if (appState.currentState === STATES.FASTING) {
+        const { eatStart, eatEnd, eatDurationMs } = calcSimulatedEating(firstMealMs);
+        elSimFastStart.innerHTML = renderTime(eatStart);
+        elSimFastEnd.innerHTML = renderTime(eatEnd);
+        elSimFastDuration.textContent = formatSimDuration(eatDurationMs);
+    } else {
+        const { fastStart, fastEnd, fastDurationMs } = calcSimulatedFast(firstMealMs, lastMealMs);
+        elSimFastStart.innerHTML = renderTime(fastStart);
+        elSimFastEnd.innerHTML = renderTime(fastEnd);
+        elSimFastDuration.textContent = formatSimDuration(fastDurationMs);
+    }
 }
 
 // Returns the maximum allowed position (in minutes) for toggle2 in potential state.
@@ -789,6 +835,7 @@ function updateUI() {
         elForecastSection.classList.remove('hidden');
         elForecastPotentialContent.classList.remove('hidden');
         elForecastEatingContent.classList.add('hidden');
+        elBtnOpenSimulator.textContent = 'Model next fasting window →';
     }
     else if (state === STATES.EATING) {
         elCurrentStateTitle.textContent = "Eating Window";
@@ -836,6 +883,7 @@ function updateUI() {
         elForecastSection.classList.remove('hidden');
         elForecastPotentialContent.classList.add('hidden');
         elForecastEatingContent.classList.remove('hidden');
+        elBtnOpenSimulator.textContent = 'Model next fasting window →';
     }
     else if (state === STATES.FASTING) {
         elCurrentStateTitle.textContent = "Fasting Window";
@@ -866,8 +914,11 @@ function updateUI() {
             elPenaltyBadge.classList.add('hidden');
         }
 
-        // US-5: Update Forecast visibility
-        elForecastSection.classList.add('hidden');
+        // US-5/US-13: Show forecast section in fasting state (for eating window simulator link)
+        elForecastSection.classList.remove('hidden');
+        elForecastPotentialContent.classList.add('hidden');
+        elForecastEatingContent.classList.add('hidden');
+        elBtnOpenSimulator.textContent = 'Model next eating window →';
 
         // US-7: Show punishment section
         elBreakFastSection.classList.remove('hidden');
@@ -927,30 +978,47 @@ function setupEventListeners() {
     });
     document.getElementById('btn-close-simulator').addEventListener('click', closeSimulator);
     elSliderFirstMeal.addEventListener('input', () => {
-        if (parseInt(elSliderFirstMeal.value) > parseInt(elSliderLastMeal.value)) {
-            elSliderLastMeal.value = elSliderFirstMeal.value;
-        }
-        if (appState.currentState === STATES.POTENTIAL_EATING) {
-            const maxLast = getMaxLastMealMins();
-            if (parseInt(elSliderLastMeal.value) > maxLast) {
-                elSliderLastMeal.value = maxLast;
+        if (appState.currentState === STATES.FASTING) {
+            // US-13: Coupled sliders — eating start drives eating end
+            const t1 = parseInt(elSliderFirstMeal.value);
+            const fastingBonusMins = Math.max(0, Math.floor(t1 / 2));
+            elSliderLastMeal.value = Math.min(parseInt(elSliderLastMeal.max), t1 + 480 + fastingBonusMins);
+        } else {
+            if (parseInt(elSliderFirstMeal.value) > parseInt(elSliderLastMeal.value)) {
+                elSliderLastMeal.value = elSliderFirstMeal.value;
+            }
+            if (appState.currentState === STATES.POTENTIAL_EATING) {
+                const maxLast = getMaxLastMealMins();
+                if (parseInt(elSliderLastMeal.value) > maxLast) {
+                    elSliderLastMeal.value = maxLast;
+                }
             }
         }
         updateSimulatorOutput();
     });
     elSliderLastMeal.addEventListener('input', () => {
-        if (parseInt(elSliderLastMeal.value) < parseInt(elSliderFirstMeal.value)) {
-            elSliderLastMeal.value = elSliderFirstMeal.value;
-        }
-        if (appState.currentState === STATES.POTENTIAL_EATING) {
-            const maxLast = getMaxLastMealMins();
-            if (parseInt(elSliderLastMeal.value) > maxLast) {
-                elSliderLastMeal.value = maxLast;
+        if (appState.currentState === STATES.FASTING) {
+            // US-13: Coupled sliders — desired eating end back-calculates eating start
+            const t2 = parseInt(elSliderLastMeal.value);
+            const t1 = t2 <= 480 ? 0 : Math.max(0, Math.round((t2 - 480) * 2 / 3));
+            elSliderFirstMeal.value = t1;
+            // Recompute actual t2 from t1 to correct any rounding
+            const fastingBonusMins = Math.max(0, Math.floor(t1 / 2));
+            elSliderLastMeal.value = Math.min(parseInt(elSliderLastMeal.max), t1 + 480 + fastingBonusMins);
+        } else {
+            if (parseInt(elSliderLastMeal.value) < parseInt(elSliderFirstMeal.value)) {
+                elSliderLastMeal.value = elSliderFirstMeal.value;
             }
-        }
-        if (appState.currentState === STATES.EATING && simState.lastMealMinMins > 0) {
-            if (parseInt(elSliderLastMeal.value) < simState.lastMealMinMins) {
-                elSliderLastMeal.value = simState.lastMealMinMins;
+            if (appState.currentState === STATES.POTENTIAL_EATING) {
+                const maxLast = getMaxLastMealMins();
+                if (parseInt(elSliderLastMeal.value) > maxLast) {
+                    elSliderLastMeal.value = maxLast;
+                }
+            }
+            if (appState.currentState === STATES.EATING && simState.lastMealMinMins > 0) {
+                if (parseInt(elSliderLastMeal.value) < simState.lastMealMinMins) {
+                    elSliderLastMeal.value = simState.lastMealMinMins;
+                }
             }
         }
         updateSimulatorOutput();

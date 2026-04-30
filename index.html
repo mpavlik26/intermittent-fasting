@@ -230,7 +230,7 @@
     <div id="simulator-overlay" class="simulator-overlay hidden">
         <div class="simulator-content">
             <div class="simulator-header">
-                <h3 class="simulator-title">Fasting Window Simulator</h3>
+                <h3 id="simulator-title" class="simulator-title">Fasting Window Simulator</h3>
                 <button id="btn-close-simulator" class="simulator-close" aria-label="Close simulator">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -254,16 +254,16 @@
                 <div class="sim-handle-labels">
                     <div class="sim-handle-label">
                         <span class="sim-handle-dot dot-first"></span>
-                        First meal: <strong id="sim-time-first">--:--</strong>
+                        <span id="sim-label-first">First meal</span>: <strong id="sim-time-first">--:--</strong>
                     </div>
                     <div class="sim-handle-label">
                         <span class="sim-handle-dot dot-last"></span>
-                        Last meal: <strong id="sim-time-last">--:--</strong>
+                        <span id="sim-label-last">Last meal</span>: <strong id="sim-time-last">--:--</strong>
                     </div>
                 </div>
             </div>
             <div class="sim-output">
-                <div class="sim-output-label">Modeled Fasting Window</div>
+                <div id="sim-output-label" class="sim-output-label">Modeled Fasting Window</div>
                 <div class="sim-output-times">
                     <span id="sim-fast-start" class="time-highlight">--:--</span>
                     <span class="sim-arrow">→</span>
