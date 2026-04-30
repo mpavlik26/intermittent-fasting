@@ -180,3 +180,47 @@
             - 2nd toggle representing the time of the last meal eaten is movable by the user
               - if there was no last meal taken its initial position is set to the current time and it's possible to move it in both directions
               - if there is last meal taken its initial position is set to the time when the last meal was taken and it's not possible to move it to the time before the initial position
+      - US-13:
+        - I want to enrich the existing Fasting Window Simulator (US-12) so that it can also model
+          the next Eating window when I'm in the Fasting window. Currently, when in Fasting window,
+          the "Upcoming Windows Forecast" section is hidden. With US-13 it will be shown, containing
+          only a link at the bottom: "Model next eating window →". Clicking this link opens the simulator
+          overlay titled "Eating Window Simulator".
+        - The simulator uses a slider with 2 toggles representing the boundaries of the modeled Eating window:
+          - The 1st toggle represents when I plan to start eating ("Eating starts")
+          - The 2nd toggle represents when the Eating window ends ("Eating ends")
+        - The key difference from US-12 is that the 2 toggles are coupled — they always show the
+          Eating window boundaries together — enabling two complementary use cases:
+          - 1st use case: "If I start eating at time X, till when can I eat?"
+            - Moving the 1st toggle (eating start) automatically updates the 2nd toggle to the
+              computed eating window end: first_meal + 8h + fasting_bonus
+          - 2nd use case: "I want to finish eating by time Y — when must I start?"
+            - Moving the 2nd toggle (desired eating end) automatically back-calculates and updates
+              the 1st toggle to the required eating start time
+        - Fasting bonus (US-3 logic) applies to the modeled Eating window:
+          - If the 1st toggle is set to a time later than the fasting window end (i.e. the user
+            delays eating), a fasting bonus is earned: bonus = floor(delay / 2)
+          - This bonus extends the eating window end: window_end = first_meal + 8h + bonus
+        - Slider configuration:
+          - Slider start time = the end of the current Fasting window (= start of the next Potential
+            Eating window)
+          - Slider end time = slider start time + 24 hours
+        - Initial toggle positions when opened:
+          - 1st toggle initially set to the slider start (eating would begin right when fasting ends)
+          - 2nd toggle initially set to slider start + 8 hours (default eating window length, no bonus)
+          - Both toggles are movable
+        - Output section shows: "Modeled Eating Window" interval — start time, end time, and duration
+        - Testing scenario:
+          - Fasting window ends at 10:00 (sliderStart = 10:00),
+            so sliderEnd = 10:00 + 24h = 10:00 next day
+          - Initial state: 1st toggle = 10:00, 2nd toggle = 18:00 (8h window, no bonus)
+          - User moves 1st toggle to 12:00 (2h delay → bonus = 1h):
+            → 2nd toggle auto-moves to 21:00 (12:00 + 8h + 1h), duration = 9h
+          - User then moves 2nd toggle to 20:00:
+            → solve: 20:00 = start + 8h + (start - 10:00)/2
+            → start = (2×20h - 16h + 10h) / 3 = 34h/3 ≈ 11:20
+            → 1st toggle auto-moves to 11:20, bonus = 40min, eating ends at 11:20 + 8h + 40min = 20:00
+          - User moves 2nd toggle to 18:00 (equal to sliderStart + 8h = no bonus threshold):
+            → 1st toggle snaps to 10:00 (no delay, no bonus), 2nd toggle stays at 18:00
+          - User moves 2nd toggle below 18:00 (e.g. to 17:00):
+            → 1st toggle stays at 10:00, 2nd toggle snaps back to 18:00 (minimum window)
