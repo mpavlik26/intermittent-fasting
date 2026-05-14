@@ -20,6 +20,17 @@ test('break-fast section is visible during fasting', async ({ page }) => {
     await expect(page.locator('#break-fast-section')).toBeVisible();
 });
 
+test('break-fast section appears before forecast section in fasting state', async ({ page }) => {
+    await setAppState(page, makeFastingState());
+    await page.goto('/');
+
+    const breakFastPos = await page.locator('#break-fast-section').evaluate(el =>
+        el.compareDocumentPosition(document.getElementById('forecast-section'))
+    );
+    // Node.DOCUMENT_POSITION_FOLLOWING = 4 means forecast comes AFTER break-fast
+    expect(breakFastPos & 4).toBe(4);
+});
+
 test('break-fast panel expands on toggle click', async ({ page }) => {
     await setAppState(page, makeFastingState());
     await page.goto('/');
