@@ -808,6 +808,44 @@ function handleTitleClick() {
     }
 }
 
+function setupHoldToConfirm(btn, action, defaultLabel) {
+    let countdownInterval = null;
+    let remaining = 3;
+
+    const cancel = () => {
+        if (!countdownInterval) return;
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+        remaining = 3;
+        btn.textContent = defaultLabel;
+        btn.classList.remove('counting-down');
+    };
+
+    const start = (e) => {
+        e.preventDefault();
+        if (countdownInterval) return;
+        remaining = 3;
+        btn.textContent = String(remaining);
+        btn.classList.add('counting-down');
+        countdownInterval = setInterval(() => {
+            remaining--;
+            if (remaining <= 0) {
+                cancel();
+                action();
+            } else {
+                btn.textContent = String(remaining);
+            }
+        }, 1000);
+    };
+
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('touchstart', start, { passive: false });
+    btn.addEventListener('mouseup', cancel);
+    btn.addEventListener('mouseleave', cancel);
+    btn.addEventListener('touchend', cancel);
+    btn.addEventListener('touchcancel', cancel);
+}
+
 function updateUI() {
     const state = appState.currentState;
     elStatusCard.setAttribute('data-state', state);
@@ -930,8 +968,8 @@ function updateUI() {
 
 // --- Event Listeners ---
 function setupEventListeners() {
-    elBtnFirstMeal.addEventListener('click', transitionToEating);
-    elBtnLastMeal.addEventListener('click', logLastMeal);
+    setupHoldToConfirm(elBtnFirstMeal, transitionToEating, 'Log First Meal');
+    setupHoldToConfirm(elBtnLastMeal, logLastMeal, 'Log Last Meal');
 
     if (elBtnSubmitLog) {
         elBtnSubmitLog.addEventListener('click', submitMealLog);

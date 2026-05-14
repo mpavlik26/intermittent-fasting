@@ -30,7 +30,7 @@ test('clicking Log First Meal transitions to eating window', async ({ page }) =>
     await setAppState(page, makePotentialState());
     await page.goto('/');
 
-    await page.click('#btn-first-meal');
+    await page.evaluate(() => transitionToEating());
 
     await expect(page.locator('#current-state')).toHaveText('Eating Window');
     await expect(page.locator('#timer-display')).toBeVisible();
@@ -92,7 +92,7 @@ test('full cycle potential → eating → fasting → potential leaves 2 history
     await page.goto('/');
 
     // Start eating
-    await page.click('#btn-first-meal');
+    await page.evaluate(() => transitionToEating());
     await expect(page.locator('#current-state')).toHaveText('Eating Window');
 
     // Advance past eating window (8 hours)

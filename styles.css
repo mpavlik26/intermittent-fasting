@@ -400,6 +400,17 @@ body {
     transform: translateY(0);
 }
 
+.btn.counting-down {
+    background: var(--state-fasting) !important;
+    box-shadow: 0 4px 14px 0 rgba(245, 158, 11, 0.5) !important;
+    animation: countdown-pulse 1s ease-in-out infinite;
+}
+
+@keyframes countdown-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.75; }
+}
+
 .secondary-btn {
     background: rgba(255, 255, 255, 0.1);
     color: white;

@@ -224,3 +224,6 @@
             → 1st toggle snaps to 10:00 (no delay, no bonus), 2nd toggle stays at 18:00
           - User moves 2nd toggle below 18:00 (e.g. to 17:00):
             → 1st toggle stays at 10:00, 2nd toggle snaps back to 18:00 (minimum window)
+- Uncategorized user-stories (they form no logical group)
+  - US-14:
+    - As the user can touch / click on "Log first meal" / "Log last meal" buttons by mistake and it has the direct consequences, it would be great if it works in the way a count-down displaying 3, 2, 1 seconds during the button press is provided. If 3 seconds pass, then the action is performed. If the user stop pressing the button during those 3 seconds the action is not performed.

@@ -58,6 +58,7 @@ Test files in `tests/`:
 | `history.spec.js` | US-10 records, Manual/Bonus/Penalty tags |
 | `manual-session.spec.js` | US-11 setup overlay, mid-session override |
 | `simulator.spec.js` | US-12 simulator visibility, slider state, calculation correctness, constraints |
+| `hold-to-confirm.spec.js` | US-14 hold-to-confirm countdown on Log First/Last Meal buttons |
 
 Time-based transitions are tested by calling `page.evaluate(() => { appState.timeOffsetMs += ms; tick(); })` — same mechanism as the in-app debug buttons but without needing to unlock the debug panel.
 
@@ -127,6 +128,8 @@ All state lives in `appState` (a plain JS object) and is persisted to `localStor
 ## Development Workflow
 
 Feature development follows the user stories in `user-stories.md`. Each user story (US-B1 through US-11) maps to a dedicated branch and PR. The `master` branch is the main branch.
+
+Never use git worktrees. Always work directly in the repository working directory on whatever branch is currently checked out.
 
 ## E2E Test Requirement
 

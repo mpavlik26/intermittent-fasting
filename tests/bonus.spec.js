@@ -34,7 +34,7 @@ test('US-3: starting eating late extends eating window by half of over-fasted ti
     }));
     await page.goto('/');
 
-    await page.click('#btn-first-meal');
+    await page.evaluate(() => transitionToEating());
 
     const { fastingBonusMs, windowEndTime, windowStartTime } = await page.evaluate(() => ({
         fastingBonusMs: appState.fastingBonusMs,
@@ -78,7 +78,7 @@ test('US-4: logging last meal early shortens fasting window', async ({ page }) =
     }));
     await page.goto('/');
 
-    await page.click('#btn-last-meal');
+    await page.evaluate(() => logLastMeal());
 
     // Advance past eating window to trigger eating → fasting transition
     await advanceTime(page, 2 * 60 * 60 * 1000 + 10000);
@@ -110,7 +110,7 @@ test('US-4: fasting bonus badge visible with correct text after eating bonus app
     }));
     await page.goto('/');
 
-    await page.click('#btn-last-meal');
+    await page.evaluate(() => logLastMeal());
     await advanceTime(page, 2 * 60 * 60 * 1000 + 10000);
 
     await expect(page.locator('#current-state')).toHaveText('Fasting Window');
