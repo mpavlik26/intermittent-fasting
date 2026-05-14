@@ -576,3 +576,38 @@ test('fasting: US-3 fasting bonus extends eating window when first meal is late'
     const result = await calcEat(page, 120);
     expect(result.eatDurationMs).toBe(DURATION_EATING_MS + 60 * 60 * 1000); // 9h
 });
+
+test('fasting: output section displays correct eating window after slider move', async ({ page }) => {
+    await setAppState(page, makeFastingState());
+    await page.goto('/');
+    await openSimulator(page);
+
+    // Move toggle 1 to 120 min (2h delay → 1h US-3 bonus → 9h eating window)
+    await page.evaluate(() => {
+        document.getElementById('slider-first-meal').value = 120;
+        document.getElementById('slider-first-meal').dispatchEvent(new Event('input'));
+    });
+
+    // Duration must reflect the 9h eating window in the DOM
+    const duration = await page.evaluate(() =>
+        document.getElementById('sim-fast-duration').textContent
+    );
+    expect(duration).toBe('9h');
+
+    // Start and end times must be consistent with the computed eating window
+    const { startText, endText } = await page.evaluate(() => {
+        const sliderStart = simState.sliderStartMs;
+        const eatStart = sliderStart + 120 * 60000;                 // T1 = 120min from fasting end
+        const eatEnd   = sliderStart + (120 + 480 + 60) * 60000;    // + 8h + 1h bonus
+        return {
+            startText: document.getElementById('sim-fast-start').textContent.trim(),
+            endText:   document.getElementById('sim-fast-end').textContent.trim(),
+            expectedStart: new Date(eatStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            expectedEnd:   new Date(eatEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+    }).then(({ startText, endText, expectedStart, expectedEnd }) => {
+        expect(startText).toContain(expectedStart);
+        expect(endText).toContain(expectedEnd);
+        return { startText, endText };
+    });
+});
