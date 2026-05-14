@@ -1,9 +1,9 @@
-const CACHE_NAME = 'fasting-tracker-US-14-ver-1';
+const CACHE_NAME = 'fasting-tracker-US-14-ver-2';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=7',
-  './app.js?v=7',
+  './styles.css?v=8',
+  './app.js?v=8',
   './manifest.json?v=6',
   './icons/icon-192.png',
   './icons/icon-512.png'

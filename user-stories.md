@@ -164,6 +164,7 @@
 - The seventh slice will have the following background and user stories:
      - Background:
        - I want to add to the application the capability of predictions that would help me better plan my eating and fasting windows in advance.
+       - The "Upcoming Windows Forecast" section is always the topmost section within the status card, regardless of the current window state (Potential Eating, Eating, or Fasting). In the Fasting state the "Break Fast Prematurely" section appears directly below it.
     - User stories:
       - US 12:
         - I want to see what happens with the next window if I behave in the current window in specific way. I want to see in Potential Eating window and Eating window an appropriate visualisation for modeling purposes where the output is always the modeled Fasting window interval. I want to have there a slider with 2 toggles. There are always 2 toggles - the 1st one represents the time of the first meal taken and the 2nd one the time of the last meal eaten. The 2nd toggle cannot be moved before the 1st one and vice versa. There will be a link accessing this visualisation as the last text of the "Upcoming windows forecast" section. The behaviour based on the window type I'm currently in is the following:
