@@ -164,6 +164,7 @@
 - The seventh slice will have the following background and user stories:
      - Background:
        - I want to add to the application the capability of predictions that would help me better plan my eating and fasting windows in advance.
+       - The "Upcoming Windows Forecast" section is always the topmost section within the status card, regardless of the current window state (Potential Eating, Eating, or Fasting). In the Fasting state the "Break Fast Prematurely" section appears directly below it.
     - User stories:
       - US 12:
         - I want to see what happens with the next window if I behave in the current window in specific way. I want to see in Potential Eating window and Eating window an appropriate visualisation for modeling purposes where the output is always the modeled Fasting window interval. I want to have there a slider with 2 toggles. There are always 2 toggles - the 1st one represents the time of the first meal taken and the 2nd one the time of the last meal eaten. The 2nd toggle cannot be moved before the 1st one and vice versa. There will be a link accessing this visualisation as the last text of the "Upcoming windows forecast" section. The behaviour based on the window type I'm currently in is the following:
@@ -224,3 +225,6 @@
             → 1st toggle snaps to 10:00 (no delay, no bonus), 2nd toggle stays at 18:00
           - User moves 2nd toggle below 18:00 (e.g. to 17:00):
             → 1st toggle stays at 10:00, 2nd toggle snaps back to 18:00 (minimum window)
+- Uncategorized user-stories (they form no logical group)
+  - US-14:
+    - As the user can touch / click on "Log first meal" / "Log last meal" buttons by mistake and it has the direct consequences, it would be great if it works in the way a count-down displaying 3, 2, 1 seconds during the button press is provided. If 3 seconds pass, then the action is performed. If the user stop pressing the button during those 3 seconds the action is not performed.

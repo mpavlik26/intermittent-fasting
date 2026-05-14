@@ -64,6 +64,12 @@ async function setAppState(page, state) {
     }, state);
 }
 
+// Simulates a full 3-second button hold, triggering the hold-to-confirm action.
+async function holdButton(page, selector) {
+    await page.locator(selector).dispatchEvent('mousedown');
+    await page.waitForTimeout(3200);
+}
+
 // Advances timeOffsetMs by ms and triggers a tick synchronously.
 // Because all app state and DOM updates in tick() are synchronous,
 // Playwright assertions immediately after this call see the final state.
@@ -83,4 +89,5 @@ module.exports = {
     makePotentialState,
     setAppState,
     advanceTime,
+    holdButton,
 };
