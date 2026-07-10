@@ -127,9 +127,15 @@ All state lives in `appState` (a plain JS object) and is persisted to `localStor
 
 ## Development Workflow
 
-Feature development follows the user stories in `user-stories.md`. Each user story (US-B1 through US-11) maps to a dedicated branch and PR. The `master` branch is the main branch.
+Feature development follows the user stories in `user-stories.md`. Each user story maps to a dedicated branch and PR. The `master` branch is the main branch.
 
 Never use git worktrees. Always work directly in the repository working directory on whatever branch is currently checked out.
+
+Before drafting an implementation plan for any user story, always:
+1. Discuss and clarify the story with the user first — surface ambiguities, don't assume.
+2. Rephrase the clarified story directly into `user-stories.md`, replacing the original text, respecting the file's existing indentation/formatting style.
+
+Only after both steps are done should an implementation plan be prepared.
 
 ## E2E Test Requirement
 

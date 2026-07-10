@@ -228,3 +228,9 @@
 - Uncategorized user-stories (they form no logical group)
   - US-14:
     - As the user can touch / click on "Log first meal" / "Log last meal" buttons by mistake and it has the direct consequences, it would be great if it works in the way a count-down displaying 3, 2, 1 seconds during the button press is provided. If 3 seconds pass, then the action is performed. If the user stop pressing the button during those 3 seconds the action is not performed.
+  - US-15:
+    - As a user, when I submit a retrospective meal log (US-B5) and the entered time falls within the boundaries of the currently active Fasting window (i.e. the app is currently in the Fasting state and the entered time lies between its start and end), that means I'm retroactively confessing I broke that fast. The system must apply the exact same consequences as the corresponding option from US-7:
+      - A retrospective last meal entry falling inside the current Fasting window is treated exactly like choosing "prolonging previous Eating window"
+      - A retrospective first meal entry falling inside the current Fasting window is treated exactly like choosing "premature start of the next Eating window"
+    - The only difference from triggering these US-7 options live: everywhere US-7 uses "now" (the moment of the button click) for its penalty and window calculations, the entered retrospective time is used instead — the retrospective time is the actual moment the fast was broken, even though it's being logged later.
+    - If the entered time does not fall within the currently active Fasting window, none of this applies and existing US-B5 behavior is unchanged.
