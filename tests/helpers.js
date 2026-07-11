@@ -80,6 +80,15 @@ async function advanceTime(page, ms) {
     }, ms);
 }
 
+// US-8: loadState() always forces isDebugUnlocked back to false on load,
+// so the only way to reveal the debug panel is 5 real clicks on the title.
+async function unlockDebugPanel(page) {
+    const title = page.locator('#app-title');
+    for (let i = 0; i < 5; i++) {
+        await title.click();
+    }
+}
+
 module.exports = {
     DURATION_EATING_MS,
     DURATION_FASTING_MS,
@@ -90,4 +99,5 @@ module.exports = {
     setAppState,
     advanceTime,
     holdButton,
+    unlockDebugPanel,
 };

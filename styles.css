@@ -502,6 +502,13 @@ body {
     font-family: monospace;
 }
 
+.debug-app-version {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+    font-family: monospace;
+}
+
 /* Bonus Badge */
 .bonus-badge {
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.1));

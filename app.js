@@ -1,5 +1,5 @@
 // --- Constants ---
-console.log("APP_VERSION: US-15-ver-1");
+console.log("APP_VERSION: US-16-ver-1");
 const STATES = {
     POTENTIAL_EATING: 'potential',
     EATING: 'eating',
@@ -112,10 +112,29 @@ const elHistoryList = document.getElementById('history-list');
 function init() {
     loadState();
     setupEventListeners();
+    initAppVersionDisplay();
 
     // Start Ticker
     setInterval(tick, 1000);
     tick(); // Initial call
+}
+
+// US-16: Read the live cache name (sw.js's CACHE_NAME) via the Cache Storage API
+function initAppVersionDisplay() {
+    const el = document.getElementById('app-version-val');
+    if (!el) return;
+    if (!('serviceWorker' in navigator) || !('caches' in window)) {
+        el.textContent = 'N/A';
+        return;
+    }
+    navigator.serviceWorker.ready
+        .then(() => caches.keys())
+        .then((cacheNames) => {
+            el.textContent = cacheNames[0] || 'unregistered';
+        })
+        .catch(() => {
+            el.textContent = 'unknown';
+        });
 }
 
 function loadState() {
