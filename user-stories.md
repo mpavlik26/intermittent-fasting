@@ -234,3 +234,8 @@
       - A retrospective first meal entry falling inside the current Fasting window is treated exactly like choosing "premature start of the next Eating window"
     - The only difference from triggering these US-7 options live: everywhere US-7 uses "now" (the moment of the button click) for its penalty and window calculations, the entered retrospective time is used instead — the retrospective time is the actual moment the fast was broken, even though it's being logged later.
     - If the entered time does not fall within the currently active Fasting window, none of this applies and existing US-B5 behavior is unchanged.
+  - US-16:
+    - As the developer I'd like to see the version of the application in DEBUG CONTROLS pane, so that when testing the app I'm sure which version I'm working with
+      - place it under the line with the Time offset
+      - the version means the CACHE_NAME string from sw.js file
+      - the value is read live from the browser's Cache Storage (via caches.keys()), not from a duplicated string — sw.js's activate handler always keeps exactly one cache present and its name is CACHE_NAME, so this guarantees the displayed version always matches what the service worker actually installed

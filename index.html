@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=8">
+    <link rel="stylesheet" href="styles.css?v=9">
     
     <!-- PWA Tags -->
     <link rel="manifest" href="manifest.json?v=6">
@@ -223,6 +223,7 @@
                 <button id="btn-debug-reset" class="btn tool-btn danger">Reset App</button>
             </div>
             <p class="debug-time-offset">Time Offset: <span id="time-offset-val">0</span> ms</p>
+            <p class="debug-app-version">Version: <span id="app-version-val">…</span></p>
         </section>
     </div>
 
@@ -308,7 +309,7 @@
         </div>
     </template>
 
-    <script src="app.js?v=8"></script>
+    <script src="app.js?v=9"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

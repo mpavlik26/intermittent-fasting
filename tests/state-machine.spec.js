@@ -7,6 +7,7 @@ const {
     makePotentialState,
     setAppState,
     advanceTime,
+    unlockDebugPanel,
 } = require('./helpers');
 
 test('shows setup overlay when no saved state', async ({ page }) => {
@@ -106,4 +107,40 @@ test('full cycle potential → eating → fasting → potential leaves 2 history
     // Open history and verify 2 records
     await page.click('#btn-toggle-history');
     await expect(page.locator('.history-record-item')).toHaveCount(2);
+});
+
+test('US-16: app version is visible in Debug Controls after Time Offset', async ({ page }) => {
+    await setAppState(page, makePotentialState());
+    await page.goto('/');
+    await unlockDebugPanel(page);
+
+    await expect(page.locator('.debug-controls')).toHaveClass(/visible/);
+    await expect(page.locator('#app-version-val')).toBeVisible();
+
+    const order = await page.locator('.debug-controls').evaluate((section) => {
+        const els = Array.from(section.querySelectorAll('#time-offset-val, #app-version-val'));
+        return els.map((el) => el.id);
+    });
+    expect(order).toEqual(['time-offset-val', 'app-version-val']);
+});
+
+test('US-16: app version reflects the live Cache Storage entry', async ({ page }) => {
+    await setAppState(page, makePotentialState());
+    await page.goto('/');
+    await unlockDebugPanel(page);
+
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    const liveCacheName = await page.evaluate(async () => (await caches.keys())[0]);
+
+    await expect(page.locator('#app-version-val')).toHaveText(liveCacheName);
+});
+
+test('US-16: app version matches the committed sw.js CACHE_NAME', async ({ page }) => {
+    await setAppState(page, makePotentialState());
+    await page.goto('/');
+    await unlockDebugPanel(page);
+
+    await page.evaluate(() => navigator.serviceWorker.ready);
+
+    await expect(page.locator('#app-version-val')).toHaveText('fasting-tracker-US-16-ver-1');
 });
