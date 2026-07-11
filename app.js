@@ -442,7 +442,18 @@ function submitMealLog() {
     if (!mealTime) return;
 
     const type = elMealTypeSelect.value;
-    if (type === 'first') {
+    // US-15: retrospective entries landing inside the active Fasting window
+    // retroactively confess breaking that fast — apply US-7 consequences instead.
+    const isInsideActiveFast = appState.currentState === STATES.FASTING &&
+        mealTime >= appState.windowStartTime && mealTime <= appState.windowEndTime;
+
+    if (isInsideActiveFast) {
+        if (type === 'first') {
+            startEatingPrematurely(mealTime);
+        } else {
+            prolongEatingAndStartFast(mealTime);
+        }
+    } else if (type === 'first') {
         transitionToEating(mealTime);
     } else {
         logLastMeal(mealTime);
@@ -504,8 +515,8 @@ function toggleBreakFastLog(forceValue) {
     }
 }
 
-function startEatingPrematurely() {
-    const now = getCurrentTime();
+function startEatingPrematurely(retroTimeMs) {
+    const now = typeof retroTimeMs === 'number' ? retroTimeMs : getCurrentTime();
     const originalEnd = appState.windowEndTime;
     const originalStartTime = appState.windowStartTime;
     const originalPenalty = appState.appliedPenaltyMs;
@@ -536,8 +547,8 @@ function startEatingPrematurely() {
     updateUI();
 }
 
-function prolongEatingAndStartFast() {
-    const now = getCurrentTime();
+function prolongEatingAndStartFast(retroTimeMs) {
+    const now = typeof retroTimeMs === 'number' ? retroTimeMs : getCurrentTime();
     const originalTargetEnd = appState.lastEatingWindowTargetMs;
     const originalStartTime = appState.windowStartTime;
     const originalPenalty = appState.appliedPenaltyMs;
