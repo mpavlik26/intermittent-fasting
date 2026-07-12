@@ -9,6 +9,10 @@ const STATES = {
 const DURATION_EATING_MS = 8 * 60 * 60 * 1000;
 const DURATION_FASTING_MS = 16 * 60 * 60 * 1000;
 
+const BONUS_DIVISOR = 2; // US-3/US-4: bonus = half of excess/early time
+const PROLONGING_PENALTY_MULTIPLIER = 2; // US-7 Option 1
+const PREMATURE_START_PENALTY_MULTIPLIER = 2; // US-7 Option 2 (was 4, halved by US-17)
+
 // --- State Variables ---
 let appState = {
     currentState: STATES.POTENTIAL_EATING,
@@ -332,7 +336,7 @@ function transitionToEating(retroTimeMs) {
     // US-3: Calculate bonus if fasting continued into potential eating window
     let bonusMs = appState.fastingBonusMs; // Keep existing if already set (e.g. re-logging)
     if (appState.currentState === STATES.POTENTIAL_EATING && appState.windowEndTime && timeToUse > appState.windowEndTime) {
-        bonusMs = Math.floor((timeToUse - appState.windowEndTime) / 2);
+        bonusMs = Math.floor((timeToUse - appState.windowEndTime) / BONUS_DIVISOR);
     }
 
     appState.currentState = STATES.EATING;
@@ -384,7 +388,7 @@ function calculateEatingBonus() {
 
 function getEatingBonusForTime(timeMs) {
     if (timeMs && appState.lastEatingWindowTargetMs && timeMs < appState.lastEatingWindowTargetMs) {
-        return Math.floor((appState.lastEatingWindowTargetMs - timeMs) / 2);
+        return Math.floor((appState.lastEatingWindowTargetMs - timeMs) / BONUS_DIVISOR);
     }
     return 0;
 }
@@ -522,7 +526,7 @@ function startEatingPrematurely(retroTimeMs) {
     const originalPenalty = appState.appliedPenaltyMs;
 
     // Option 2 (Penalty 2): set based on remaining fast time
-    appState.prematureStartPenaltyMs = 4 * Math.max(0, originalEnd - now);
+    appState.prematureStartPenaltyMs = PREMATURE_START_PENALTY_MULTIPLIER * Math.max(0, originalEnd - now);
 
     // US-7: Clear Penalty 1 when starting a new Eating window
     appState.prolongingPenaltyMs = 0;
@@ -554,7 +558,7 @@ function prolongEatingAndStartFast(retroTimeMs) {
     const originalPenalty = appState.appliedPenaltyMs;
 
     // Option 1 (Penalty 1): Recalculated from original target end
-    appState.prolongingPenaltyMs = 2 * Math.max(0, now - originalTargetEnd);
+    appState.prolongingPenaltyMs = PROLONGING_PENALTY_MULTIPLIER * Math.max(0, now - originalTargetEnd);
 
     // Restart Fast from now
     appState.currentState = STATES.FASTING;
@@ -644,7 +648,7 @@ function calcSimulatedFast(firstMealMs, lastMealMs) {
     if (appState.currentState === STATES.POTENTIAL_EATING) {
         let fastingBonus = 0;
         if (appState.windowEndTime && firstMealMs > appState.windowEndTime) {
-            fastingBonus = Math.floor((firstMealMs - appState.windowEndTime) / 2);
+            fastingBonus = Math.floor((firstMealMs - appState.windowEndTime) / BONUS_DIVISOR);
         }
         effectiveEatingEnd = firstMealMs + DURATION_EATING_MS + fastingBonus;
     } else {
@@ -652,7 +656,7 @@ function calcSimulatedFast(firstMealMs, lastMealMs) {
     }
 
     const eatingBonus = lastMealMs < effectiveEatingEnd
-        ? Math.floor((effectiveEatingEnd - lastMealMs) / 2)
+        ? Math.floor((effectiveEatingEnd - lastMealMs) / BONUS_DIVISOR)
         : 0;
 
     const fastStart = lastMealMs;
@@ -665,7 +669,7 @@ function calcSimulatedFast(firstMealMs, lastMealMs) {
 function calcSimulatedEating(firstMealMs) {
     let fastingBonus = 0;
     if (firstMealMs > simState.sliderStartMs) {
-        fastingBonus = Math.floor((firstMealMs - simState.sliderStartMs) / 2);
+        fastingBonus = Math.floor((firstMealMs - simState.sliderStartMs) / BONUS_DIVISOR);
     }
     const eatStart = firstMealMs;
     const eatEnd = firstMealMs + DURATION_EATING_MS + fastingBonus;
@@ -708,7 +712,7 @@ function getMaxLastMealMins() {
     const firstMealMs = simState.sliderStartMs + firstMins * 60000;
     let fastingBonus = 0;
     if (appState.windowEndTime && firstMealMs > appState.windowEndTime) {
-        fastingBonus = Math.floor((firstMealMs - appState.windowEndTime) / 2);
+        fastingBonus = Math.floor((firstMealMs - appState.windowEndTime) / BONUS_DIVISOR);
     }
     const maxLastMealMs = firstMealMs + DURATION_EATING_MS + fastingBonus;
     return Math.min(
@@ -765,13 +769,13 @@ function tick() {
         const originalEatingEnd = appState.lastEatingWindowTargetMs;
 
         // Prediction 1: Prolonging
-        const predictedPenalty1 = 2 * Math.max(0, now - originalEatingEnd);
+        const predictedPenalty1 = PROLONGING_PENALTY_MULTIPLIER * Math.max(0, now - originalEatingEnd);
         const totalPenalty1 = predictedPenalty1 + appState.prematureStartPenaltyMs;
         elBreakProlongPenalty.textContent = `${Math.floor(totalPenalty1 / 60000)}m`;
         elBreakProlongEnd.innerHTML = renderTime(now + DURATION_FASTING_MS + totalPenalty1);
 
         // Prediction 2: Premature Start
-        const predictedPenalty2 = 4 * Math.max(0, appState.windowEndTime - now);
+        const predictedPenalty2 = PREMATURE_START_PENALTY_MULTIPLIER * Math.max(0, appState.windowEndTime - now);
         elBreakPrematurePenalty.textContent = `${Math.floor(predictedPenalty2 / 60000)}m`;
         // Interval: Starts now, Ends after (Eating 8h + Fasting 16h + Penalty 2)
         const nextFastStart = now + DURATION_EATING_MS;
@@ -781,7 +785,7 @@ function tick() {
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         // US-3 Real-time feedback: Calculate pending bonus
         if (appState.windowEndTime && now > appState.windowEndTime) {
-            const pendingBonusMs = Math.floor((now - appState.windowEndTime) / 2);
+            const pendingBonusMs = Math.floor((now - appState.windowEndTime) / BONUS_DIVISOR);
             const bonusMins = Math.floor(pendingBonusMs / (60 * 1000));
             if (bonusMins > 0) {
                 elBonusText.textContent = `+${bonusMins}m pending reward`;
@@ -795,7 +799,7 @@ function tick() {
 
         // US-5: Potential Eating Forecast
         const pendingBonusMs = (appState.windowEndTime && now > appState.windowEndTime)
-            ? Math.floor((now - appState.windowEndTime) / 2)
+            ? Math.floor((now - appState.windowEndTime) / BONUS_DIVISOR)
             : 0;
         const forecastedEatingEnd = now + DURATION_EATING_MS + pendingBonusMs;
         elForecastEatingEnd.innerHTML = renderTime(forecastedEatingEnd);
