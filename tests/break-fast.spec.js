@@ -106,9 +106,9 @@ test('Option 2: premature start carries penalty into next fasting window', async
         prematureStartPenaltyMs: appState.prematureStartPenaltyMs,
     }));
 
-    // Penalty = 4 * remaining time = 4 * 2h = 8h (in ms, ±5min tolerance)
-    expect(prematureStartPenaltyMs).toBeGreaterThan(4 * remaining - 5 * 60 * 1000);
-    expect(prematureStartPenaltyMs).toBeLessThan(4 * remaining + 5 * 60 * 1000);
+    // Penalty = 2 * remaining time = 2 * 2h = 4h (in ms, ±5min tolerance)
+    expect(prematureStartPenaltyMs).toBeGreaterThan(2 * remaining - 5 * 60 * 1000);
+    expect(prematureStartPenaltyMs).toBeLessThan(2 * remaining + 5 * 60 * 1000);
 });
 
 // US-15: retrospective logs that land inside an active Fasting window
@@ -176,8 +176,8 @@ test('US-15: retrospective first meal inside active fast applies Option 2 penalt
         history: appState.history,
     }));
 
-    // Penalty = 4 * (windowEndTime - retroTime) ≈ 4 * 2.5h
-    const expectedPenalty = 4 * (windowEndTime - retroTime.getTime());
+    // Penalty = 2 * (windowEndTime - retroTime) ≈ 2 * 2.5h
+    const expectedPenalty = 2 * (windowEndTime - retroTime.getTime());
     expect(prematureStartPenaltyMs).toBeGreaterThan(expectedPenalty - 5 * 60 * 1000);
     expect(prematureStartPenaltyMs).toBeLessThan(expectedPenalty + 5 * 60 * 1000);
 

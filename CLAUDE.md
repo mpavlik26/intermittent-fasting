@@ -140,3 +140,12 @@ Only after both steps are done should an implementation plan be prepared.
 ## E2E Test Requirement
 
 Every implementation change or new feature **must** be accompanied by E2E test coverage. When proposing or executing an implementation plan, always include the E2E test plan as an explicit part of it — covering visibility, initial state, calculation correctness, and edge cases relevant to the feature. Whether to add tests to an existing spec file or create a new one is a matter of judgment and convenience.
+
+## Versioning
+
+At the end of every user story implementation, bump the version markers so the running app is identifiable (see US-16):
+
+- `sw.js`: bump `CACHE_NAME` (e.g. `fasting-tracker-US-16-ver-1` → `fasting-tracker-US-17-ver-1`)
+- `app.js`: bump the `console.log("APP_VERSION: ...")` string on line 2 to match
+- For any changed file among `app.js`/`styles.css`, bump its cache-busting `?v=N` query param everywhere it's referenced — in `index.html`'s `<script>`/`<link>` tags and in `sw.js`'s `ASSETS` array. Leave `?v=N` unchanged for files not touched by the story.
+- Update the hardcoded expected version string in `tests/state-machine.spec.js` (the `'US-16: app version matches the committed sw.js CACHE_NAME'` test) to match the new `CACHE_NAME`.

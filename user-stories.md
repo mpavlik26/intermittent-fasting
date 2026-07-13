@@ -239,3 +239,28 @@
       - place it under the line with the Time offset
       - the version means the CACHE_NAME string from sw.js file
       - the value is read live from the browser's Cache Storage (via caches.keys()), not from a duplicated string — sw.js's activate handler always keeps exactly one cache present and its name is CACHE_NAME, so this guarantees the displayed version always matches what the service worker actually installed
+  - US-17:
+    - As the user using the application I see the penalty 2 used in "premature start of the next Eating window" scenario introduced in US-7 is too high. It should be just double not quadruplication
+    - Testing scenario (reuses the US-7 walkthrough up to the premature start, then diverges because "penalty 2" is now halved)
+      - Same setup as the US-7 walkthrough: Eating window 15:00-23:00, last meal at 20:00, Fasting starts at 20:00 with a 90 minutes bonus
+      - Fast is broken twice using "prolonging previous Eating window", at 23:10 and then at 23:30, exactly as in the US-7 walkthrough
+        - after the second restart: start time is 23:30, "penalty 1" is 1 hour, Fasting would finish at 16:30 next day
+      - At 15:50 I get very hungry and break the fasting rule using the "premature start of the next Eating window" option
+      - "penalty 2" is now set to 2 * 40 = 80 minutes (40 minutes between 15:50 and the planned end of the current Fasting window) - half of the 4 * 40 = 160 minutes from the US-7 walkthrough
+      - The current Fasting window is finished immediatelly
+      - The standard Eating window starts immediatelly with start at 15:50 and end at 23:50 (no penalties or bonuses are applied here (never))
+        - Last meal was at 22:50 and it means I'll bring a 30 minutes bonus to the next Fasting window
+      - The next fasting window has the following parameters
+        - It starts at 22:50 (standard starting time derived from the last meal eating in Eating window)
+        - There's 30 minutes bonus
+        - There's 1 hour 20 minutes "penalty 2" applied here
+        - The length of the Fasting window will be:
+          - default 16 hours - 30 minutes (bonus) + 1 hour 20 minutes (penalty 2) = 16 hours 50 minutes
+        - Thus the end of the Fasting window would be at 15:40 next day (instead of 17:00 next day under the old quadruple penalty)
+      - But I break the fasting rule again and at 0:20 using the "prolonging previous Eating window" option
+      - Fasting window is restarted accordingly:
+        - start time is set to 0:20
+        - "penalty 1" is set to 2 * 30 minutes (30 minutes between the end of the previous Eating window (23:50) and now (0:20)) = 1 hour
+        - "penalty 2" is preserved to 1 hour 20 minutes
+        - Fasting will take default 16 hours + 1 hour (penalty 1) + 1 hour 20 minutes (penalty 2) = 18 hours 20 minutes
+        - Fasting window will end at 18:40 next day (instead of 20:00 next day under the old quadruple penalty)
