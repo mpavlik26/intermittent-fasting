@@ -142,5 +142,5 @@ test('US-16: app version matches the committed sw.js CACHE_NAME', async ({ page 
 
     await page.evaluate(() => navigator.serviceWorker.ready);
 
-    await expect(page.locator('#app-version-val')).toHaveText('fasting-tracker-US-17-ver-1');
+    await expect(page.locator('#app-version-val')).toHaveText('fasting-tracker-US-18-ver-1');
 });

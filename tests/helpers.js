@@ -13,6 +13,8 @@ function makeState(overrides = {}) {
         prolongingPenaltyMs: 0,
         prematureStartPenaltyMs: 0,
         appliedPenaltyMs: 0,
+        storedBonusMs: 0,
+        pendingUseMs: 0,
         lastEatingWindowTargetMs: null,
         timeOffsetMs: 0,
         isDebugUnlocked: false,
