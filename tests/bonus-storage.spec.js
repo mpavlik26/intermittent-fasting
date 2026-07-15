@@ -70,15 +70,13 @@ test('US-18: storing an amount moves it from the active bonus into storedBonusMs
     expect(state.lastEatingWindowTargetMs).toBe(windowEndTime - 15 * 60 * 1000);
     expect(state.storedBonusMs).toBe(20 * 60 * 1000);
 
-    await page.reload();
-    state = await page.evaluate(() => ({
-        fastingBonusMs: appState.fastingBonusMs,
-        windowEndTime: appState.windowEndTime,
-        storedBonusMs: appState.storedBonusMs,
-    }));
-    expect(state.fastingBonusMs).toBe(25 * 60 * 1000);
-    expect(state.windowEndTime).toBe(windowEndTime - 15 * 60 * 1000);
-    expect(state.storedBonusMs).toBe(20 * 60 * 1000);
+    // Confirm the same values were persisted to localStorage (not just in-memory).
+    // A page.reload() would re-fire setAppState's addInitScript and clobber this
+    // with the original pre-mutation state, so read localStorage directly instead.
+    const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('fastingTrackerState')));
+    expect(persisted.fastingBonusMs).toBe(25 * 60 * 1000);
+    expect(persisted.windowEndTime).toBe(windowEndTime - 15 * 60 * 1000);
+    expect(persisted.storedBonusMs).toBe(20 * 60 * 1000);
 });
 
 test('US-18: storing from FASTING reduces eatingBonusMs and windowEndTime, not lastEatingWindowTargetMs', async ({ page }) => {
