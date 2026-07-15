@@ -79,7 +79,7 @@ test('US-18: storing an amount moves it from the active bonus into storedBonusMs
     expect(persisted.storedBonusMs).toBe(20 * 60 * 1000);
 });
 
-test('US-18: storing from FASTING reduces eatingBonusMs and windowEndTime, not lastEatingWindowTargetMs', async ({ page }) => {
+test('US-18: storing from FASTING reduces eatingBonusMs and increases windowEndTime, not lastEatingWindowTargetMs', async ({ page }) => {
     const now = Date.now();
     const windowEndTime = now + DURATION_FASTING_MS;
     await setAppState(page, makeFastingState({
@@ -100,7 +100,7 @@ test('US-18: storing from FASTING reduces eatingBonusMs and windowEndTime, not l
         storedBonusMs: appState.storedBonusMs,
     }));
     expect(state.eatingBonusMs).toBe(12 * 60 * 1000);
-    expect(state.windowEndTime).toBe(windowEndTime - 8 * 60 * 1000);
+    expect(state.windowEndTime).toBe(windowEndTime + 8 * 60 * 1000);
     expect(state.lastEatingWindowTargetMs).toBe(now - 5000);
     expect(state.storedBonusMs).toBe(8 * 60 * 1000);
 });

@@ -1,5 +1,5 @@
 // --- Constants ---
-console.log("APP_VERSION: US-18-ver-1");
+console.log("APP_VERSION: US-18-ver-2");
 const STATES = {
     POTENTIAL_EATING: 'potential',
     EATING: 'eating',
@@ -796,10 +796,11 @@ function confirmAmountPicker() {
             if (appState.currentState === STATES.EATING) {
                 appState.fastingBonusMs -= amountMs;
                 appState.lastEatingWindowTargetMs -= amountMs;
+                appState.windowEndTime -= amountMs;
             } else if (appState.currentState === STATES.FASTING) {
                 appState.eatingBonusMs -= amountMs;
+                appState.windowEndTime += amountMs;
             }
-            appState.windowEndTime -= amountMs;
             appState.storedBonusMs += amountMs;
         } else if (amountPickerMode === 'use') {
             appState.storedBonusMs -= amountMs;
