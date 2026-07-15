@@ -129,6 +129,8 @@ All state lives in `appState` (a plain JS object) and is persisted to `localStor
 
 Feature development follows the user stories in `user-stories.md`. Each user story maps to a dedicated branch and PR. The `master` branch is the main branch.
 
+Completed slices are archived out of `user-stories.md` into `user-stories-archive.md` to keep the live file lean, but a slice is only archived once a *following* slice exists to prove it's finished — never split a slice across the live file and the archive. This means the most recently completed slice always stays in `user-stories.md` until the next slice begins.
+
 Never use git worktrees. Always work directly in the repository working directory on whatever branch is currently checked out.
 
 Before drafting an implementation plan for any user story, always:

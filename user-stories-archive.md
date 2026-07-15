@@ -1,0 +1,262 @@
+Archive of completed user stories (slices 1-7, US-B1 through US-17), moved out of `user-stories.md` to keep the live file lean. All content below is unmodified — see `user-stories.md` for the standing methodology rules, the current in-progress slice, and the archiving convention.
+
+  - The first slice will have the following background and will contain the following user stories (Starting the 3rd slide I started to denote all user stories with `US-<story number>` identification. For being able to identify somehow also the stories in the 1st and the 2nd slice, those stories have `US-B<story-number>` as their identification (B here means "basic"))
+    - Background:
+      - only max 8 hours window to eat and min 16 hours window to fast
+      - at any time there's either eating window, potential eating window or fasting window
+      - potential eating window starts immediately after the previous fasting window ends. The length of the potential eating window is not set upfront (it finishes with the start time of the eating of the first meal as this occation actually means the start of the eating window taking 8 hours).
+    - User stories:
+      - US-B1:
+         - As a user who started eating in the potential eating window I want to set a time when I started eating of the first meal as this occation actually means the start of the eating window taking 8 hours.
+      - US-B2:
+        - As a user finished eating in the eating window I want to record a time when I finished eating of the last meal so this occation could influence the start of the following fasting window.
+      - US-B3:
+        - As a user I want to start the fasting window immediately after the eating window ends. The length of the fasting window is 16 hours minus the time I spent at the end of the eating window already fasting (time since the finishing of the last eating).
+      - US-B4:
+        - As a user I want to see the current time, whether I'm in the eating, potential eating or fasting window, when they started and when they end. As a user I want the eating window starts immediately after the fasting window ends. The length of the eating window is 8 hours.
+  - The second slice will have the following background and user stories:
+    - Background:
+      - it's not possible always to log the first and the last meal activity at the time when this events happen, but it's necessary to record those events retrospectively
+        - it can happen even at time when the window (potential eating, eating, fasting) is already different
+    - User story:
+      - US-B5:
+        - As a user I want to record the first and the last meal events no matter what the current window is. It's always time in the past (or the current one). It's enough to set the time without date. If the entered time is greater than the current one, it means it's the time from the previous date (e.g. I can log on Wednesday at 2:00 the first/last meal that happened at 22:00, what means it happened on Tuesday). The system has to take those inputs into account.
+  - The third slice will have the following background and user stories:
+    - Background:
+      - I just want to polish some glitches I noticed during usage of the current solution and introduce functionality of so called bonuses that I can get if my fasting behavior is better than defined
+    - User stories:
+      - US-1:
+        - If the fasting window is shorten by n hours/minutes because the last meal in the eating window happened exactly by n hours/minutes before the end of the fasting window, the app will show the start of the fasting window as the time of the last meal and not the end of the fasting window. This is in conflict with the current behaviour and I like to change exactly this.
+      - US-2:
+        - As the user I want to be able to log last meal using "Log last meal" button repeatedly, so that I can log the last meal at any time as I don't know if the meal I already ate was the last one or not. The last meal is the really last meal logged (including those last meal logged using the retrospective logging).
+      - US-3:
+        - As the user I want to be rewarded when the fasting continous also during the "Potential eating window". If the fasting is about n minutes longer (it's based on the first meal in the potential eating window taken) it prolongs the length of the potential eating window by n/2 minutes.
+      - US-4:
+        - As I love being rewarded when my fasting is longer than defined, I also want to be rewarded when my real eating window is shorter (and I didn't utilize it fully). The bonus is calculated as follows: if the eating window is shorter by n minutes than defined, the bonus is n/2 minutes. This bonus is not added, but the next fasting window can be then shortened by this bonus.
+        - It's necessary to take into consideration the fact both bonuses (US-3 and US-4) can be combined. It means: Eg.: When the eating window is being prolonged by an hour to 9 hours (thanks to a fasting taking 2 more hours) and I then use just 8 hours from those 9 hours, I get the 30 minutes reward in terms of shortening the fasting window (it will be 15 hours 30 minutes in this case).
+  - The fourth slice will have the following background and user stories:
+    - Background:
+      - I want to polish the UI and user experience in this slice
+    - User stories:
+      - US 5:
+          - As the user in Potential eating window or Eating window I would like to see when the following window ends, what means:
+            - when I'm in Potential eating window I would like to see when the Eating window ends if it starts now
+            - when I'm in Eating window I would like to see when the folowing Fasting window ends if I eat nothing since:
+              - my lastly logged meal
+              - this moment (meaning if I log my last window now)
+      - US 6:
+         - As the user I'd like to have the area for entering retrospective data collapsed by default and expand it once I'd like to log there something. Once I enter it the area should collapse automatically.
+   - The fifth slice will have the following background and user stories:
+     - Background:
+       - I want to enable the ability to eat even when I'm in fasting window. As this is something what I, as someone who should follow the intermittent fasting rules, should avoid, there will be a "punishment" for this.
+    - User stories:
+       - US-7:
+         - As the user in Fasting window it can happen I have to eat even when I'm in fasting window. I have basically two options:
+           - 1. "prolonging previous Eating window"
+           - 2. "premature start of the next Eating window"
+         - Those 2 options are available just when I'm in the Fasting window. As this is actually the breaking of the fasting rules, there should be a special section for this purpose and this section is collapsed by default and it's expanded only when I want to break the fasting rule (and then I can choose which of those 2 options would I like to use) and than it's collapsed back.
+         - If use the "prolonging previous Eating window", it has the following consequences:
+           - I'll get "penalty 1" that's equal to 2 * <minutes between the end of the previous Eating window and now>
+             - it's based on the time when the previous Eating window ends and not the starting time of the current Fasting window as the penalty would be much higher in case when I finished the Eating window prematurely and that wouldn't be correct
+           - The current Fasting window is restarted in the following way:
+             - The starting time of the Fasting window is set to the current time
+             - The possible bonuses are discarded (because bonuses are here for premature end of Eating and I'm eating longer than I should)
+             - If there's "penalty 2" present in the current Fasting window (as the current Fasting window can be the one that's occuring as the first Fasting window after the premature start of the next Eating window (and the standard Eating window)), it's preserved in the reset Fasting window as well
+             - If there's "penalty 1" present in the current Fasting window, it's discarded and calculated again
+             - The length of the Fasting is calculated as:
+               - default length of 16 hours + "penalty 1" + "penalty 2"
+         - If use the "premature start of the next Eating window", it has the following consequences:
+           - I'll get "penalty 2" thats' equal to 4 * <minutes between now and the end of the current Fasting window>
+           - The current Fasting window finishes immediatelly and the standard Eating window with default length of 8 hours (with no bonuses and no penalties) starts automatically
+           - The next Fasting window (after the end of the Eating window) is created in the following way
+             - the starting time of the Fasting window is set in a standard way (so, it means it's based on the time of the last meal in the previous Eating window and I can get bonuses for this for sure)
+             - The length of the Fasting is calculated as:
+               - default length of 16 hours - bonuses + "penalty 2"
+         - If there's any penalty that will be applied (this is a case of "penalty 2" in the prematurely started Eating window) or is being applied in the current Fasting window (it's a case of both penalty types) it's value (in minutes) is shown in a special badge. If there are both penalties, their sum is displayed in the badge
+         - As the user who wants to break the fasting rule, I have to see the consequences of my decision in both options I can choose from
+           - I want to see the sum of penalties that will be applied before I choose a particular option
+           - I want to see the time when the Fasting ends in the case a choose a particular option
+             - I want to see the whole Fasting interval (start and finish time of the Fasting) at the "premature start of the next Eating window" option
+         - Testing scenario
+           - Eating window starts at 15:00 and finishes at 23:00
+             - Last meal was at 20:00
+           - Fasting window starts at 20:00 (time of the last meal eaten in Eating window) and 90 minutes bonus is applied 
+           - Fasting would end at 20:00 + 16 hours - 90 minutes = 10:30 next day
+           - But I break the fasting rule at 23:10 using option "prolonging previous Eating window"
+           - Fasting window is restarted accordingly:
+             - start time is set to 23:10
+             - "penalty 1" is set to 2 * 10 minutes (10 minutes between 23:00 and 23:10) = 20 minutes
+             - Fasting will take default 16 hours + 20 minutes
+             - Fasting would finish at 15:30 next day
+           - But I break the fasting rule at 23:30 and again using the same option "prolonging previous Eating window"
+           - Fasting window is restarted accordingly again:
+             - start time is set to 23:30
+             - "penalty 1" is reset to 2 * 30 minutes (10 minutes between 23:00 and 23:30) = 60 minutes
+             - Fasting will take default 16 hours + 1 hour
+             - Fasting would finish at 16:30 next day
+           - But I start to be very hungry already at 15:50 and again break the fasting rules - now using the "premature start of the next Eating window" option what has its consequences
+           - "penalty 2" is set to 4 * 40 = 160 minutes (40 minutes between 15:50 and the planned end of the current Fasting window) and it will be applied in the next Fasting window
+           - The current Fasting window is finished immediatelly
+           - The standard Eating window starts immediatelly with start at 15:50 and end at 23:50 (no penalties or bonuses are applied here (never))
+             - Last meal was at 22:50 and it means I'll bring a 30 minutes bonus to the next Fasting window
+           - The next fasting window has the following parameters
+             - It starts at 22:50 (standard starting time derived from the last meal eating in Eating window)
+             - There's 30 minutes bonus
+             - There's 2 hours 40 minutes "penalty 2" applied here
+             - The length of the Fasting window will be:
+               - default 16 hours - 30 minutes (bonus) + 2 hours 40 minutes (penalty 2) = 18 hours 10 minutes
+             - Thus the end of the Fasting window would be at 17:00 next day
+           - But I break the fasting rule again and at 0:20 using the "prolonging previous Eating window" option
+           - Fasting window is restarted accordingly:
+             - start time is set to 0:20
+             - "penalty 1" is set to 2 * 30 minutes (30 minutes between the end of the previous Eating window (23:50) and now (0:20)) = 1 hour
+             - "penalty 2" is preserved to 2 hours 40 minutes
+             - Fasting will take default 16 hours + 1 hour (penalty 1) + 2 hours 40 minutes (penalty 2) = 19 hours 40 minutes
+             - Fasting window will end at 20:00 next day
+- The sixth slice will have the following background and user stories:
+     - Background:
+       - I just want to clean-up the UI for maximal user comfort
+    - User stories:
+       - US-8:
+         - Me as the user who would like to have Debug control section hidden (meaning not just collapsed) and have it displayed only when really needed I'd like to have there an option to show and then hide the Debug control section using 5 quick taps on the "FASTING TRACKER" label (name of the application)
+           - The Debug control section is hidden by defaults
+       - US-9:
+         - As the user I'd like to see at any time that any time presented (e.g. starting or finishing time of the particular window, predictions, ...) is in the different day (previous / next / or even more days before / from now). So, if this is a case, I want to see there a 2-character long abbreviation of the day of week (as an upper index next to the time)
+           - This has to work really dynamically what means that if I'm in the window that's going through midnight, there's a day superscript by the finish time of the particular window and there's no day superscript at the starting time of that window and at the midnight this actually has to switch
+           - It has to work also in all the predictions (e.g. "If you start eating now, your eating window ends at xx:yy")
+       - US-10:
+         - As the user I want to see history of my Eating and Fasting windows
+           - records should have desc order (the newest records will be on the top)
+             - dates will serves as paragraph headers
+               - the paragraph contains records for windows started on that date
+           - each record will contain:
+             - the window type (eat / fast) - ideally using some icon / gentle background color to save display space
+             - start and finish time
+               - Finish time of the history record for Eating window is the time when the window can end latest (not the time of the last meal eaten in Eating window)
+                 - this is the truth also in the case of prolonging the Eating window (see the edge case described bellow)
+               - Finish time of the history record for Fasting window is the time when Fasting ends (time when potential eating window actually starts)
+                 - this is the truth also in the edge case of the premature start of the next Eating window (see the edge case described bellow)
+             - bonuses and penalties applied to the particular window
+               - it means: when there's Eating window and the last meal was 1 hour before the end of the Eating window, the bonus is caused in Eating window, but it's applied in the consequent Fasting window and that's why I'd like to see it at the Fasting history record 
+           - each record is added to the history at the finish time of a the particular window
+           - windows history should be accessible using a button or link that's placed under "Add retrospective log button" and the new Windows history area is scrollable with max-height of 500px
+           - at the case of the prolonged Eating window, I'd like to have the record for the prolonged eating window untouched by the prolonging at all (it means e.g. if the Eating window should end at 23:00, but I prolonged it at 23:30, the history record for the prolonged eating window will still have 23:00 as the time of the Eating window end). Penalty applied for this prolongation will be however displayed at the record corresponding to the restarted Fasting window for sure. There will be also just one Fasting record in the history at this case - the restarted one. I don't want to see there a Fasting record from 23:00 till 23:30. I just want to see there a record for restarted Fasting that started at 23:30.
+           - at the case of the premature start of the Eating window, I'd like to see again the Fasting window times untouched by this premature start (it means e.g. if the Fasting window should finish at 7:00, but I started the Eating window prematurely already at 6:30, then I'd like to have still 7:00 as the time of the end of the Fasting window). Penalty applied for the premature start of the Eating window will then be displayed at the history record related to the next Fasting window as it's applied there.
+       - US-11:
+         - As the user coming to the aplication I have to set the 1st window, what means:
+           - which of the 3 windows (Potential eating, Eating, Fasting) I'm currently in
+           - when the window starts and when it finishes (I cannot set it for Potential eating window as it finishes automatically with the 1st meal)
+             - the default finish time for Eating and Fasting windows will be 8 and 16 hours respectively later than their starts. User has however the possibility to change it anyhow
+             - the system have to deal correctly with the windows spreading across midnight (if the finish time is lower then the starting time it automatically means the finish time is the next day)
+             - I want to enter just a time. I don't want to be bothered by selecting of a date. It's always supposed the current time is inside the window span. If there is no way how the current time can be inside the span user entered an error meesage is displayed and the user cannot Apply those times as the start and finish time of the particular window.
+               - expample:
+                 - I enter start time at 16:00 and finish time at 4:00, then:
+                   - if it's 22:00 now, I meant the window starts at 16:00 of today and finishes at 4:00 of tomorrow
+                   - if it's 2:00 now, I meant the window starts at 16:00 of yesterday and finishes at 4:00 of today
+                   - if it's 6:00 now, an error message has to be displayed as this window span is not valid
+         - As the user who is using the application I'd like to have the option to reset the current window and manually set it exactly in the same way I can do it at the start of the application. The only difference is in the fact, this option is used just from time to time, so it shouldn't be too prominent for the user
+           - If there's a new section used for this manual setting of the current window and there are also other sections for Windows history (user story US-10) and adding retrospective records (user story US-B5), only one of them is expanded at a time. Expansion of such a section always leads to collapse the other two sections.
+           - From the Windows history point of view the current window will remain in the Windows history with the original span (to correspond with the current logic) and the new redefined window (or even the 1st window) will be added to the history at the time when it finishes. That record however will have a special badge "manual" to distinguish this manually created window from other windows.
+- The seventh slice will have the following background and user stories:
+     - Background:
+       - I want to add to the application the capability of predictions that would help me better plan my eating and fasting windows in advance.
+       - The "Upcoming Windows Forecast" section is always the topmost section within the status card, regardless of the current window state (Potential Eating, Eating, or Fasting). In the Fasting state the "Break Fast Prematurely" section appears directly below it.
+    - User stories:
+      - US 12:
+        - I want to see what happens with the next window if I behave in the current window in specific way. I want to see in Potential Eating window and Eating window an appropriate visualisation for modeling purposes where the output is always the modeled Fasting window interval. I want to have there a slider with 2 toggles. There are always 2 toggles - the 1st one represents the time of the first meal taken and the 2nd one the time of the last meal eaten. The 2nd toggle cannot be moved before the 1st one and vice versa. There will be a link accessing this visualisation as the last text of the "Upcoming windows forecast" section. The behaviour based on the window type I'm currently in is the following:
+          - If I'm in the potential eating window:
+            - slider start time is the starting time of the potential eating window
+            - slider end time is the current time (time when I opened the visualisation) + 24hours and it's not extended during the time of the display (I don't want to extend it if I look at the visualisation e.g. 1 hour)
+            - 1st toggle representing the time of the first meal taken is movable by the user and it's initially set to the current time
+            - 2nd toggle representing the time of the last meal eaten is movable by the user as well and it's initially set to the current time + 8 hours (default length of the eating window)
+              - 2nd toggle cannot be moved more far to the right than to the length of the eating window (including bonuses) and thus the expected length of the following fasting cannot exceed 16 hours (default fasting length)
+          - If I'm in the eating window:
+            - slider start time is the start time of the eating window
+            - slider end time is the end time of the eating window
+            - 1st toggle representing the time of the first meal taken is at the start slider position and it's not movable (because I've already had a first meal as the Eating window has started)
+            - 2nd toggle representing the time of the last meal eaten is movable by the user
+              - if there was no last meal taken its initial position is set to the current time and it's possible to move it in both directions
+              - if there is last meal taken its initial position is set to the time when the last meal was taken and it's not possible to move it to the time before the initial position
+      - US-13:
+        - I want to enrich the existing Fasting Window Simulator (US-12) so that it can also model
+          the next Eating window when I'm in the Fasting window. Currently, when in Fasting window,
+          the "Upcoming Windows Forecast" section is hidden. With US-13 it will be shown, containing
+          only a link at the bottom: "Model next eating window →". Clicking this link opens the simulator
+          overlay titled "Eating Window Simulator".
+        - The simulator uses a slider with 2 toggles representing the boundaries of the modeled Eating window:
+          - The 1st toggle represents when I plan to start eating ("Eating starts")
+          - The 2nd toggle represents when the Eating window ends ("Eating ends")
+        - The key difference from US-12 is that the 2 toggles are coupled — they always show the
+          Eating window boundaries together — enabling two complementary use cases:
+          - 1st use case: "If I start eating at time X, till when can I eat?"
+            - Moving the 1st toggle (eating start) automatically updates the 2nd toggle to the
+              computed eating window end: first_meal + 8h + fasting_bonus
+          - 2nd use case: "I want to finish eating by time Y — when must I start?"
+            - Moving the 2nd toggle (desired eating end) automatically back-calculates and updates
+              the 1st toggle to the required eating start time
+        - Fasting bonus (US-3 logic) applies to the modeled Eating window:
+          - If the 1st toggle is set to a time later than the fasting window end (i.e. the user
+            delays eating), a fasting bonus is earned: bonus = floor(delay / 2)
+          - This bonus extends the eating window end: window_end = first_meal + 8h + bonus
+        - Slider configuration:
+          - Slider start time = the end of the current Fasting window (= start of the next Potential
+            Eating window)
+          - Slider end time = slider start time + 24 hours
+        - Initial toggle positions when opened:
+          - 1st toggle initially set to the slider start (eating would begin right when fasting ends)
+          - 2nd toggle initially set to slider start + 8 hours (default eating window length, no bonus)
+          - Both toggles are movable
+        - Output section shows: "Modeled Eating Window" interval — start time, end time, and duration
+        - Testing scenario:
+          - Fasting window ends at 10:00 (sliderStart = 10:00),
+            so sliderEnd = 10:00 + 24h = 10:00 next day
+          - Initial state: 1st toggle = 10:00, 2nd toggle = 18:00 (8h window, no bonus)
+          - User moves 1st toggle to 12:00 (2h delay → bonus = 1h):
+            → 2nd toggle auto-moves to 21:00 (12:00 + 8h + 1h), duration = 9h
+          - User then moves 2nd toggle to 20:00:
+            → solve: 20:00 = start + 8h + (start - 10:00)/2
+            → start = (2×20h - 16h + 10h) / 3 = 34h/3 ≈ 11:20
+            → 1st toggle auto-moves to 11:20, bonus = 40min, eating ends at 11:20 + 8h + 40min = 20:00
+          - User moves 2nd toggle to 18:00 (equal to sliderStart + 8h = no bonus threshold):
+            → 1st toggle snaps to 10:00 (no delay, no bonus), 2nd toggle stays at 18:00
+          - User moves 2nd toggle below 18:00 (e.g. to 17:00):
+            → 1st toggle stays at 10:00, 2nd toggle snaps back to 18:00 (minimum window)
+- Uncategorized user-stories (they form no logical group)
+  - US-14:
+    - As the user can touch / click on "Log first meal" / "Log last meal" buttons by mistake and it has the direct consequences, it would be great if it works in the way a count-down displaying 3, 2, 1 seconds during the button press is provided. If 3 seconds pass, then the action is performed. If the user stop pressing the button during those 3 seconds the action is not performed.
+  - US-15:
+    - As a user, when I submit a retrospective meal log (US-B5) and the entered time falls within the boundaries of the currently active Fasting window (i.e. the app is currently in the Fasting state and the entered time lies between its start and end), that means I'm retroactively confessing I broke that fast. The system must apply the exact same consequences as the corresponding option from US-7:
+      - A retrospective last meal entry falling inside the current Fasting window is treated exactly like choosing "prolonging previous Eating window"
+      - A retrospective first meal entry falling inside the current Fasting window is treated exactly like choosing "premature start of the next Eating window"
+    - The only difference from triggering these US-7 options live: everywhere US-7 uses "now" (the moment of the button click) for its penalty and window calculations, the entered retrospective time is used instead — the retrospective time is the actual moment the fast was broken, even though it's being logged later.
+    - If the entered time does not fall within the currently active Fasting window, none of this applies and existing US-B5 behavior is unchanged.
+  - US-16:
+    - As the developer I'd like to see the version of the application in DEBUG CONTROLS pane, so that when testing the app I'm sure which version I'm working with
+      - place it under the line with the Time offset
+      - the version means the CACHE_NAME string from sw.js file
+      - the value is read live from the browser's Cache Storage (via caches.keys()), not from a duplicated string — sw.js's activate handler always keeps exactly one cache present and its name is CACHE_NAME, so this guarantees the displayed version always matches what the service worker actually installed
+  - US-17:
+    - As the user using the application I see the penalty 2 used in "premature start of the next Eating window" scenario introduced in US-7 is too high. It should be just double not quadruplication
+    - Testing scenario (reuses the US-7 walkthrough up to the premature start, then diverges because "penalty 2" is now halved)
+      - Same setup as the US-7 walkthrough: Eating window 15:00-23:00, last meal at 20:00, Fasting starts at 20:00 with a 90 minutes bonus
+      - Fast is broken twice using "prolonging previous Eating window", at 23:10 and then at 23:30, exactly as in the US-7 walkthrough
+        - after the second restart: start time is 23:30, "penalty 1" is 1 hour, Fasting would finish at 16:30 next day
+      - At 15:50 I get very hungry and break the fasting rule using the "premature start of the next Eating window" option
+      - "penalty 2" is now set to 2 * 40 = 80 minutes (40 minutes between 15:50 and the planned end of the current Fasting window) - half of the 4 * 40 = 160 minutes from the US-7 walkthrough
+      - The current Fasting window is finished immediatelly
+      - The standard Eating window starts immediatelly with start at 15:50 and end at 23:50 (no penalties or bonuses are applied here (never))
+        - Last meal was at 22:50 and it means I'll bring a 30 minutes bonus to the next Fasting window
+      - The next fasting window has the following parameters
+        - It starts at 22:50 (standard starting time derived from the last meal eating in Eating window)
+        - There's 30 minutes bonus
+        - There's 1 hour 20 minutes "penalty 2" applied here
+        - The length of the Fasting window will be:
+          - default 16 hours - 30 minutes (bonus) + 1 hour 20 minutes (penalty 2) = 16 hours 50 minutes
+        - Thus the end of the Fasting window would be at 15:40 next day (instead of 17:00 next day under the old quadruple penalty)
+      - But I break the fasting rule again and at 0:20 using the "prolonging previous Eating window" option
+      - Fasting window is restarted accordingly:
+        - start time is set to 0:20
+        - "penalty 1" is set to 2 * 30 minutes (30 minutes between the end of the previous Eating window (23:50) and now (0:20)) = 1 hour
+        - "penalty 2" is preserved to 1 hour 20 minutes
+        - Fasting will take default 16 hours + 1 hour (penalty 1) + 1 hour 20 minutes (penalty 2) = 18 hours 20 minutes
+        - Fasting window will end at 18:40 next day (instead of 20:00 next day under the old quadruple penalty)
