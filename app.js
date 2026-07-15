@@ -1,5 +1,5 @@
 // --- Constants ---
-console.log("APP_VERSION: US-17-ver-1");
+console.log("APP_VERSION: US-18-ver-2");
 const STATES = {
     POTENTIAL_EATING: 'potential',
     EATING: 'eating',
@@ -21,6 +21,8 @@ let appState = {
     lastMealTime: null,
     fastingBonusMs: 0,
     eatingBonusMs: 0,
+    storedBonusMs: 0, // US-18: Bonus minutes moved into personal storage
+    pendingUseMs: 0, // US-18: Stored minutes reserved for next Eating window
     prolongingPenaltyMs: 0, // Option 1
     prematureStartPenaltyMs: 0, // Option 2
     appliedPenaltyMs: 0,
@@ -33,6 +35,11 @@ let appState = {
 
 // US-12: Simulator state (not persisted)
 let simState = { sliderStartMs: 0, sliderEndMs: 0, lastMealMinMins: 0 };
+
+// US-18: Amount picker state (not persisted)
+let amountPickerMode = null; // 'store' | 'use'
+let amountPickerMaxMinutes = 0;
+let amountPickerValueMinutes = 0;
 
 // --- DOM Elements ---
 const elCurrentTime = document.getElementById('current-time');
@@ -112,6 +119,18 @@ const elBtnToggleHistory = document.getElementById('btn-toggle-history');
 const elHistoryContent = document.getElementById('history-content');
 const elHistoryList = document.getElementById('history-list');
 
+// US-18 DOM Elements
+const elStoredBonusIndicator = document.getElementById('stored-bonus-indicator');
+const elAmountPickerOverlay = document.getElementById('amount-picker-overlay');
+const elAmountPickerTitle = document.getElementById('amount-picker-title');
+const elAmountPickerClose = document.getElementById('amount-picker-close');
+const elAmountPickerSlider = document.getElementById('amount-picker-slider');
+const elAmountPickerFill = document.getElementById('amount-picker-fill');
+const elAmountPickerValue = document.getElementById('amount-picker-value');
+const elAmountPickerMinus = document.getElementById('amount-picker-minus');
+const elAmountPickerPlus = document.getElementById('amount-picker-plus');
+const elAmountPickerConfirm = document.getElementById('amount-picker-confirm');
+
 // --- Initialization ---
 function init() {
     loadState();
@@ -170,6 +189,8 @@ function resetState() {
         lastMealTime: null,
         fastingBonusMs: 0,
         eatingBonusMs: 0,
+        storedBonusMs: 0,
+        pendingUseMs: 0,
         prolongingPenaltyMs: 0,
         prematureStartPenaltyMs: 0,
         appliedPenaltyMs: 0,
@@ -339,13 +360,17 @@ function transitionToEating(retroTimeMs) {
         bonusMs = Math.floor((timeToUse - appState.windowEndTime) / BONUS_DIVISOR);
     }
 
+    // US-18: Consume any stored-bonus minutes reserved while in Potential Eating
+    const pendingUseMs = appState.pendingUseMs;
+
     appState.currentState = STATES.EATING;
     appState.windowStartTime = timeToUse;
     appState.fastingBonusMs = bonusMs;
-    const targetEndTime = timeToUse + DURATION_EATING_MS + bonusMs;
+    const targetEndTime = timeToUse + DURATION_EATING_MS + bonusMs + pendingUseMs;
     appState.windowEndTime = targetEndTime;
     appState.lastEatingWindowTargetMs = targetEndTime; // US-7: Vital for Penalty 1
     appState.eatingBonusMs = 0; // Reset for new window
+    appState.pendingUseMs = 0; // US-18: Reservation consumed
     appState.lastMealTime = null;
     
     // US-10: We don't add to history here, but we could if we wanted to track Potential windows.
@@ -728,6 +753,82 @@ function formatSimDuration(ms) {
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+// --- US-18: Stored Bonus ---
+function openAmountPicker(mode) {
+    amountPickerMode = mode;
+    if (mode === 'store') {
+        const state = appState.currentState;
+        const activeBonusMs = state === STATES.EATING ? appState.fastingBonusMs : appState.eatingBonusMs;
+        amountPickerMaxMinutes = Math.floor(activeBonusMs / 60000);
+        elAmountPickerTitle.textContent = 'Move Bonus to Storage';
+    } else {
+        amountPickerMaxMinutes = Math.floor(appState.storedBonusMs / 60000);
+        elAmountPickerTitle.textContent = 'Use Stored Bonus';
+    }
+    amountPickerValueMinutes = 0;
+    elAmountPickerSlider.min = 0;
+    elAmountPickerSlider.max = amountPickerMaxMinutes;
+    renderAmountPicker();
+    elAmountPickerOverlay.classList.remove('hidden');
+}
+
+function closeAmountPicker() {
+    elAmountPickerOverlay.classList.add('hidden');
+    amountPickerMode = null;
+}
+
+function renderAmountPicker() {
+    elAmountPickerSlider.value = amountPickerValueMinutes;
+    const fillPct = amountPickerMaxMinutes > 0 ? (amountPickerValueMinutes / amountPickerMaxMinutes) * 100 : 0;
+    elAmountPickerFill.style.width = `${fillPct}%`;
+    elAmountPickerValue.textContent = `${amountPickerValueMinutes}m`;
+}
+
+function adjustAmountPicker(delta) {
+    amountPickerValueMinutes = Math.min(amountPickerMaxMinutes, Math.max(0, amountPickerValueMinutes + delta));
+    renderAmountPicker();
+}
+
+function confirmAmountPicker() {
+    const amountMs = amountPickerValueMinutes * 60000;
+    if (amountMs > 0) {
+        if (amountPickerMode === 'store') {
+            if (appState.currentState === STATES.EATING) {
+                appState.fastingBonusMs -= amountMs;
+                appState.lastEatingWindowTargetMs -= amountMs;
+                appState.windowEndTime -= amountMs;
+            } else if (appState.currentState === STATES.FASTING) {
+                appState.eatingBonusMs -= amountMs;
+                appState.windowEndTime += amountMs;
+            }
+            appState.storedBonusMs += amountMs;
+        } else if (amountPickerMode === 'use') {
+            appState.storedBonusMs -= amountMs;
+            if (appState.currentState === STATES.EATING) {
+                appState.windowEndTime += amountMs;
+                appState.lastEatingWindowTargetMs += amountMs;
+            } else if (appState.currentState === STATES.FASTING) {
+                appState.windowEndTime -= amountMs;
+            } else if (appState.currentState === STATES.POTENTIAL_EATING) {
+                appState.pendingUseMs += amountMs;
+            }
+        }
+        saveState();
+        updateUI();
+    }
+    closeAmountPicker();
+}
+
+function updateStoredBonusIndicator() {
+    const mins = Math.floor(appState.storedBonusMs / 60000);
+    if (mins > 0) {
+        elStoredBonusIndicator.textContent = `+${mins}m stored`;
+        elStoredBonusIndicator.classList.remove('hidden');
+    } else {
+        elStoredBonusIndicator.classList.add('hidden');
+    }
+}
+
 // --- Ticker ---
 function tick() {
     const now = getCurrentTime();
@@ -883,6 +984,7 @@ function setupHoldToConfirm(btn, action, defaultLabel) {
 function updateUI() {
     const state = appState.currentState;
     elStatusCard.setAttribute('data-state', state);
+    updateStoredBonusIndicator();
 
     // US-8 Handle debug visibility
     if (appState.isDebugUnlocked) {
@@ -919,9 +1021,11 @@ function updateUI() {
             const bonusMins = Math.floor(appState.fastingBonusMs / (60 * 1000));
             elBonusText.textContent = `+${bonusMins}m fasting bonus applied!`;
             elBonusBadge.classList.remove('hidden');
+            elBonusBadge.classList.add('storable'); // US-18: Click to move into storage
             desc = `You earned a ${bonusMins}m bonus for prolonged fasting! Total window: ${8 + Math.floor(bonusMins / 60)}h ${bonusMins % 60}m.`;
         } else {
             elBonusBadge.classList.add('hidden');
+            elBonusBadge.classList.remove('storable');
         }
 
         if (appState.lastMealTime) {
@@ -972,9 +1076,11 @@ function updateUI() {
             const bonusMins = Math.floor(appState.eatingBonusMs / (60 * 1000));
             elBonusText.textContent = `-${bonusMins}m fast reward applied!`;
             elBonusBadge.classList.remove('hidden');
+            elBonusBadge.classList.add('storable'); // US-18: Click to move into storage
             elStateDescription.textContent += ` Fast shortened by ${bonusMins}m because you finished eating earlier.`;
         } else {
             elBonusBadge.classList.add('hidden');
+            elBonusBadge.classList.remove('storable');
         }
 
         // US-8 Penalty Badge
@@ -1095,6 +1201,43 @@ function setupEventListeners() {
         }
         updateSimulatorOutput();
     });
+
+    // US-18: Store flow — click the applied bonus badge to move it into storage
+    elBonusBadge.addEventListener('click', () => {
+        if (appState.currentState === STATES.EATING && appState.fastingBonusMs > 0) {
+            openAmountPicker('store');
+        } else if (appState.currentState === STATES.FASTING && appState.eatingBonusMs > 0) {
+            openAmountPicker('store');
+        }
+    });
+
+    // US-18: Use flow — click the stored-bonus header indicator to spend it
+    if (elStoredBonusIndicator) {
+        elStoredBonusIndicator.addEventListener('click', () => {
+            if (appState.storedBonusMs > 0) {
+                openAmountPicker('use');
+            }
+        });
+    }
+
+    if (elAmountPickerClose) {
+        elAmountPickerClose.addEventListener('click', closeAmountPicker);
+    }
+    if (elAmountPickerConfirm) {
+        elAmountPickerConfirm.addEventListener('click', confirmAmountPicker);
+    }
+    if (elAmountPickerMinus) {
+        elAmountPickerMinus.addEventListener('click', () => adjustAmountPicker(-1));
+    }
+    if (elAmountPickerPlus) {
+        elAmountPickerPlus.addEventListener('click', () => adjustAmountPicker(1));
+    }
+    if (elAmountPickerSlider) {
+        elAmountPickerSlider.addEventListener('input', () => {
+            amountPickerValueMinutes = parseInt(elAmountPickerSlider.value);
+            renderAmountPicker();
+        });
+    }
 }
 
 function addTimeOffset(ms) {

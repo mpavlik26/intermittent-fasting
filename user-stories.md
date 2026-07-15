@@ -264,3 +264,18 @@
         - "penalty 2" is preserved to 1 hour 20 minutes
         - Fasting will take default 16 hours + 1 hour (penalty 1) + 1 hour 20 minutes (penalty 2) = 18 hours 20 minutes
         - Fasting window will end at 18:40 next day (instead of 20:00 next day under the old quadruple penalty)
+- The eighth slice will have the following background and user stories:
+  - Background:
+    - I want to store the bonuses for worse times and use them later for prolonging Eating or shortening Fasting windows
+  - User stories:
+    - US-18:
+      - As the user having an already-applied bonus in my current window (the fasting bonus badge shown during the Eating window, or the eating bonus badge shown during the Fasting window), I'd like to be able to move some of that bonus into a personal storage for later use, if that's better for me according to my plans
+        - I do this by tapping the bonus badge, then choosing how many minutes to move to storage using a slider combined with "+" / "-" buttons for adjusting by a single minute
+        - Once confirmed, the chosen amount is subtracted from the bonus applied to the current window and the window's end time is adjusted accordingly
+        - I can only choose an amount up to what's currently applied to the window - not more
+      - As the user I clearly see my stored bonus minutes total in the header area, next to the current time, whenever I have more than 0 minutes stored
+      - As the user having some bonus minutes stored, I'd like to be able to use them in whichever window I'm currently in. I do this by tapping the stored bonus indicator, then choosing how many minutes to use with the same slider + "+" / "-" buttons, and confirming
+        - if I'm in the Eating window, its end time is immediately prolonged by the chosen amount
+        - if I'm in the Fasting window, its end time is immediately shortened by the chosen amount
+        - if I'm in the "potential eating" window (no window started yet), the chosen amount is reserved and automatically applied to prolong the Eating window once I log my first meal
+        - I can only choose an amount up to what I currently have in storage - not more
