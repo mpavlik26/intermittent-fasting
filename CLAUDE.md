@@ -73,11 +73,19 @@ All user stories and their test scenarios are documented in `user-stories.md`.
 
 ## Architecture
 
-Single-page app — three files contain all logic:
+Single-page app — no build system, so `app.js` was split into plain sibling `<script>` tags under `js/` that share one global scope (not ES modules), loaded in this order from `index.html`:
 
 | File | Role |
 |------|------|
-| `app.js` | All application logic (~950 lines) |
+| `js/state.js` | Constants, `appState`/`simState`, all DOM-ref consts, `loadState()`/`saveState()`/`resetState()` |
+| `js/time-utils.js` | `getCurrentTime()`, `formatTimeOnly()`, `renderTime()`, `formatDuration()` |
+| `js/history.js` | `addToHistory()`, `renderHistory()` (US-10) |
+| `js/transitions.js` | Core state machine: `transitionToEating`/`logLastMeal`/`transitionToFasting`/`transitionToPotential`, `submitMealLog`, break-fast handlers (US-7) |
+| `js/simulator.js` | US-12/13 fasting/eating window simulator |
+| `js/bonus-storage.js` | US-18 stored-bonus amount picker |
+| `js/ui.js` | `tick()`, `updateUI()`, hold-to-confirm, debug-panel unlock |
+| `js/manual-session.js` | US-11 manual session setup/override |
+| `js/main.js` | `init()`, `setupEventListeners()`, `addTimeOffset()`, `DOMContentLoaded` boot |
 | `index.html` | UI structure and HTML templates |
 | `styles.css` | All styling including CSS variables and state-based colors |
 | `sw.js` | Service Worker (cache-first PWA offline support) |
@@ -106,11 +114,11 @@ All state lives in `appState` (a plain JS object) and is persisted to `localStor
 
 ### Key Functions
 
-- `loadState()` / `saveState()` — read/write localStorage
-- `transitionToEating()` / `transitionToFasting()` / `transitionToPotential()` — state machine transitions, each recalculates window boundaries applying bonuses/penalties
-- `updateUI()` — full UI re-render based on current state (called every tick)
-- `showSetupOverlay()` / `manualSetWindow()` — US-11 manual session setup
-- `addToHistory()` / `renderHistory()` — US-10 history persistence and display
+- `loadState()` / `saveState()` — read/write localStorage (`js/state.js`)
+- `transitionToEating()` / `transitionToFasting()` / `transitionToPotential()` — state machine transitions, each recalculates window boundaries applying bonuses/penalties (`js/transitions.js`)
+- `updateUI()` — full UI re-render based on current state (called every tick) (`js/ui.js`)
+- `showSetupOverlay()` / `manualSetWindow()` — US-11 manual session setup (`js/manual-session.js`)
+- `addToHistory()` / `renderHistory()` — US-10 history persistence and display (`js/history.js`)
 
 ### Bonus/Penalty System
 
@@ -148,6 +156,6 @@ Every implementation change or new feature **must** be accompanied by E2E test c
 At the end of every user story implementation, bump the version markers so the running app is identifiable (see US-16):
 
 - `sw.js`: bump `CACHE_NAME` (e.g. `fasting-tracker-US-16-ver-1` → `fasting-tracker-US-17-ver-1`)
-- `app.js`: bump the `console.log("APP_VERSION: ...")` string on line 2 to match
-- For any changed file among `app.js`/`styles.css`, bump its cache-busting `?v=N` query param everywhere it's referenced — in `index.html`'s `<script>`/`<link>` tags and in `sw.js`'s `ASSETS` array. Leave `?v=N` unchanged for files not touched by the story.
+- `js/state.js`: bump the `console.log("APP_VERSION: ...")` string on line 2 to match
+- For any changed file among `js/*.js`/`styles.css`, bump its cache-busting `?v=N` query param everywhere it's referenced — in `index.html`'s `<script>`/`<link>` tags and in `sw.js`'s `ASSETS` array. Leave `?v=N` unchanged for files not touched by the story.
 - Update the hardcoded expected version string in `tests/state-machine.spec.js` (the `'US-16: app version matches the committed sw.js CACHE_NAME'` test) to match the new `CACHE_NAME`.
