@@ -190,7 +190,8 @@ function updateUI() {
             const bonusMins = Math.floor(appState.fastingBonusMs / (60 * 1000));
             elBonusText.textContent = `+${bonusMins}m fasting bonus applied!`;
             elBonusBadge.classList.remove('hidden');
-            elBonusBadge.classList.add('storable'); // US-18: Click to move into storage
+            // US-18.1: only storable while there's still a safe (non-past-pushing) amount to move
+            elBonusBadge.classList.toggle('storable', canOpenAmountPicker('store'));
             desc = `You earned a ${bonusMins}m bonus for prolonged fasting! Total window: ${8 + Math.floor(bonusMins / 60)}h ${bonusMins % 60}m.`;
         } else {
             elBonusBadge.classList.add('hidden');

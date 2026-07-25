@@ -1,5 +1,5 @@
 // --- Constants ---
-console.log("APP_VERSION: US-18-ver-3");
+console.log("APP_VERSION: US-18.1-ver-1");
 const STATES = {
     POTENTIAL_EATING: 'potential',
     EATING: 'eating',
@@ -130,6 +130,7 @@ const elAmountPickerValue = document.getElementById('amount-picker-value');
 const elAmountPickerMinus = document.getElementById('amount-picker-minus');
 const elAmountPickerPlus = document.getElementById('amount-picker-plus');
 const elAmountPickerConfirm = document.getElementById('amount-picker-confirm');
+const elAmountPickerPreview = document.getElementById('amount-picker-preview');
 
 function loadState() {
     const saved = localStorage.getItem('fastingTrackerState');

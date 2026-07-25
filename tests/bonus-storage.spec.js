@@ -241,3 +241,184 @@ test('US-18: amount picker cannot exceed the available maximum', async ({ page }
     await expect(page.locator('#amount-picker-value')).toHaveText('10m');
     await expect(page.locator('#amount-picker-slider')).toHaveValue('10');
 });
+
+// --- US-18.1: time-aware safe limits + live end-time preview ---
+
+test('US-18.1: store-while-Eating slider max is capped by time remaining, not just the applied bonus', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeEatingState({
+        fastingBonusMs: 60 * 60 * 1000,
+        windowEndTime: now + 20 * 60 * 1000 + 45 * 1000,
+        lastEatingWindowTargetMs: now + 20 * 60 * 1000 + 45 * 1000,
+    }));
+    await page.goto('/');
+
+    await page.locator('#bonus-badge').first().click();
+    await expect(page.locator('#amount-picker-slider')).toHaveAttribute('max', '20');
+});
+
+test('US-18.1: use-while-Fasting slider max is capped by time remaining, not just the stored bonus', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeFastingState({
+        storedBonusMs: 200 * 60 * 1000,
+        windowEndTime: now + 60 * 60 * 1000 + 45 * 1000,
+    }));
+    await page.goto('/');
+
+    await page.locator('#stored-bonus-indicator').click();
+    await expect(page.locator('#amount-picker-slider')).toHaveAttribute('max', '60');
+});
+
+test('US-18.1: store-while-Eating amount is re-clamped at confirm time if time passes while the dialog is open', async ({ page }) => {
+    const now = Date.now();
+    const windowEndTime = now + 25 * 60 * 1000 + 45 * 1000;
+    await setAppState(page, makeEatingState({
+        fastingBonusMs: 30 * 60 * 1000,
+        windowEndTime,
+        lastEatingWindowTargetMs: windowEndTime,
+    }));
+    await page.goto('/');
+
+    await page.locator('#bonus-badge').first().click();
+    await clickPlus(page, 25);
+    await expect(page.locator('#amount-picker-value')).toHaveText('25m');
+
+    // Time passes while the dialog sits open, shrinking the safe amount well below the selection
+    await advanceTime(page, 20 * 60 * 1000);
+    await page.locator('#amount-picker-confirm').click();
+
+    const state = await page.evaluate(() => ({
+        windowEndTime: appState.windowEndTime,
+        storedBonusMs: appState.storedBonusMs,
+        currentTime: Date.now() + appState.timeOffsetMs,
+    }));
+    expect(state.windowEndTime).toBeGreaterThanOrEqual(state.currentTime - 1000);
+    expect(state.storedBonusMs).toBeGreaterThan(0);
+    expect(state.storedBonusMs).toBeLessThan(25 * 60 * 1000);
+});
+
+test('US-18.1: use-while-Fasting amount is re-clamped at confirm time if time passes while the dialog is open', async ({ page }) => {
+    const now = Date.now();
+    const windowEndTime = now + 25 * 60 * 1000 + 45 * 1000;
+    await setAppState(page, makeFastingState({
+        storedBonusMs: 30 * 60 * 1000,
+        windowEndTime,
+    }));
+    await page.goto('/');
+
+    await page.locator('#stored-bonus-indicator').click();
+    await clickPlus(page, 25);
+    await expect(page.locator('#amount-picker-value')).toHaveText('25m');
+
+    await advanceTime(page, 20 * 60 * 1000);
+    await page.locator('#amount-picker-confirm').click();
+
+    const state = await page.evaluate(() => ({
+        windowEndTime: appState.windowEndTime,
+        storedBonusMs: appState.storedBonusMs,
+        currentTime: Date.now() + appState.timeOffsetMs,
+    }));
+    expect(state.windowEndTime).toBeGreaterThanOrEqual(state.currentTime - 1000);
+    // Started at 30m stored; only a fraction of the requested 25m could safely be spent
+    expect(state.storedBonusMs).toBeGreaterThan(5 * 60 * 1000);
+    expect(state.storedBonusMs).toBeLessThan(30 * 60 * 1000);
+});
+
+test('US-18.1: bonus badge becomes non-storable and inert when no safe amount remains (store while Eating)', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeEatingState({
+        fastingBonusMs: 20 * 60 * 1000,
+        windowEndTime: now + 45 * 1000,
+        lastEatingWindowTargetMs: now + 45 * 1000,
+    }));
+    await page.goto('/');
+
+    await expect(page.locator('#bonus-badge').first()).not.toHaveClass(/storable/);
+    await page.locator('#bonus-badge').first().click();
+    await expect(page.locator('#amount-picker-overlay')).toHaveClass(/hidden/);
+});
+
+test('US-18.1: stored-bonus indicator becomes disabled and inert when no safe amount remains (use while Fasting)', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeFastingState({
+        storedBonusMs: 20 * 60 * 1000,
+        windowEndTime: now + 45 * 1000,
+    }));
+    await page.goto('/');
+
+    await expect(page.locator('#stored-bonus-indicator')).toHaveClass(/disabled/);
+    await page.locator('#stored-bonus-indicator').click();
+    await expect(page.locator('#amount-picker-overlay')).toHaveClass(/hidden/);
+});
+
+test('US-18.1: live preview reflects the resulting end time for the risky combinations', async ({ page }) => {
+    const now = Date.now();
+
+    // store while Eating: preview should show the end time moving earlier
+    const windowEndTime = now + 5 * 60 * 60 * 1000;
+    await setAppState(page, makeEatingState({
+        fastingBonusMs: 40 * 60 * 1000,
+        windowEndTime,
+        lastEatingWindowTargetMs: windowEndTime,
+    }));
+    await page.goto('/');
+    await page.locator('#bonus-badge').first().click();
+    await clickPlus(page, 15);
+    await expect(page.locator('#amount-picker-preview')).not.toHaveClass(/hidden/);
+    let expectedHtml = await page.evaluate((endMs) => `New end time: ${renderTime(endMs)}`, windowEndTime - 15 * 60 * 1000);
+    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(expectedHtml);
+    await page.locator('#amount-picker-close').click();
+
+    // use while Fasting: preview should show the end time moving earlier
+    const windowEndTime2 = now + 5 * 60 * 60 * 1000;
+    await setAppState(page, makeFastingState({
+        storedBonusMs: 40 * 60 * 1000,
+        windowEndTime: windowEndTime2,
+    }));
+    await page.goto('/');
+    await page.locator('#stored-bonus-indicator').click();
+    await clickPlus(page, 15);
+    await expect(page.locator('#amount-picker-preview')).not.toHaveClass(/hidden/);
+    expectedHtml = await page.evaluate((endMs) => `New end time: ${renderTime(endMs)}`, windowEndTime2 - 15 * 60 * 1000);
+    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(expectedHtml);
+});
+
+test('US-18.1: live preview also updates for the safe combinations, not just the risky ones', async ({ page }) => {
+    const now = Date.now();
+
+    // store while Fasting: preview should show the end time moving later
+    const windowEndTime = now + 5 * 60 * 60 * 1000;
+    await setAppState(page, makeFastingState({
+        eatingBonusMs: 40 * 60 * 1000,
+        windowEndTime,
+    }));
+    await page.goto('/');
+    await page.locator('#bonus-badge').first().click();
+    await clickPlus(page, 15);
+    await expect(page.locator('#amount-picker-preview')).not.toHaveClass(/hidden/);
+    let expectedHtml = await page.evaluate((endMs) => `New end time: ${renderTime(endMs)}`, windowEndTime + 15 * 60 * 1000);
+    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(expectedHtml);
+    await page.locator('#amount-picker-close').click();
+
+    // use while Eating: preview should show the end time moving later
+    const windowEndTime2 = now + 5 * 60 * 60 * 1000;
+    await setAppState(page, makeEatingState({
+        storedBonusMs: 40 * 60 * 1000,
+        windowEndTime: windowEndTime2,
+        lastEatingWindowTargetMs: windowEndTime2,
+    }));
+    await page.goto('/');
+    await page.locator('#stored-bonus-indicator').click();
+    await clickPlus(page, 15);
+    await expect(page.locator('#amount-picker-preview')).not.toHaveClass(/hidden/);
+    expectedHtml = await page.evaluate((endMs) => `New end time: ${renderTime(endMs)}`, windowEndTime2 + 15 * 60 * 1000);
+    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(expectedHtml);
+});
+
+test('US-18.1: preview is hidden when using stored bonus from Potential Eating, since there is no window to preview', async ({ page }) => {
+    await setAppState(page, makePotentialState({ storedBonusMs: 15 * 60 * 1000 }));
+    await page.goto('/');
+
+    await page.locator('#stored-bonus-indicator').click();
+    await expect(page.locator('#amount-picker-preview')).toHaveClass(/hidden/);
+});
