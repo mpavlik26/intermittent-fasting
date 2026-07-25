@@ -20,3 +20,14 @@
         - if I'm in the Fasting window, its end time is immediately shortened by the chosen amount
         - if I'm in the "potential eating" window (no window started yet), the chosen amount is reserved and automatically applied to prolong the Eating window once I log my first meal
         - I can only choose an amount up to what I currently have in storage - not more
+    - US-18.1:
+      - As the user opening either the "Move Bonus to Storage" or "Use Stored Bonus" dialog, I always see the window's resulting end time, updating live as I move the slider, so I can see the consequence of my choice before confirming - this applies whenever a window end time exists, not just the risky cases below (the only exception is using stored bonus while in "potential eating", where no window exists yet)
+      - As the user opening the "Move Bonus to Storage" dialog while in the Eating window, I don't want to be offered more minutes than can actually be moved without pushing the window's end time into the past
+        - The slider's maximum is the smaller of: the bonus currently applied to the window, and the time remaining until the window's end time, both computed at the moment the dialog opens
+        - If enough time passes while the dialog is open that my selected amount would now push the end time into the past, only the amount that's still safe to move gets applied when I confirm - silently, without extra feedback
+        - If there's already nothing that can safely be moved (the window's end time is at or before the current time), tapping the bonus badge doesn't open this dialog
+      - As the user opening the "Use Stored Bonus" dialog while in the Fasting window, I don't want to be offered more minutes than can actually shorten the window without pushing its end time into the past
+        - The slider's maximum is the smaller of: my total stored bonus, and the time remaining until the window's end time, both computed at the moment the dialog opens
+        - If enough time passes while the dialog is open that my selected amount would now push the end time into the past, only the amount that's still safe to use gets applied when I confirm - silently, without extra feedback
+        - If there's already nothing that can safely be used (the window's end time is at or before the current time), tapping the stored bonus indicator doesn't open this dialog
+      - These extra limits (max cap, confirm-time clamp, hiding when zero) only apply to storing while Eating and using while Fasting - storing while Fasting, using while Eating, and using while in "potential eating" only ever push the relevant end time later (or don't touch a window end time at all), so they're unaffected by them
