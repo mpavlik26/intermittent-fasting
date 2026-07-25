@@ -569,6 +569,12 @@ body {
     display: none;
 }
 
+/* US-18.1: nothing safe to use right now */
+.stored-bonus-indicator.disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
 /* Forecast Section (US-5) */
 .forecast-section {
     margin-top: 1rem;
@@ -1351,4 +1357,16 @@ body {
     font-variant-numeric: tabular-nums;
     min-width: 4.5rem;
     text-align: center;
+}
+
+/* US-18.1: live "resulting end time" preview */
+.amount-picker-preview {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0.75rem 0 0.5rem;
+}
+
+.amount-picker-preview.hidden {
+    display: none;
 }

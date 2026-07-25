@@ -125,7 +125,8 @@ function setupEventListeners() {
 
     // US-18: Store flow — click the applied bonus badge to move it into storage
     elBonusBadge.addEventListener('click', () => {
-        if (appState.currentState === STATES.EATING && appState.fastingBonusMs > 0) {
+        // US-18.1: storing while Eating is only allowed while a safe amount remains
+        if (appState.currentState === STATES.EATING && appState.fastingBonusMs > 0 && canOpenAmountPicker('store')) {
             openAmountPicker('store');
         } else if (appState.currentState === STATES.FASTING && appState.eatingBonusMs > 0) {
             openAmountPicker('store');
@@ -135,7 +136,8 @@ function setupEventListeners() {
     // US-18: Use flow — click the stored-bonus header indicator to spend it
     if (elStoredBonusIndicator) {
         elStoredBonusIndicator.addEventListener('click', () => {
-            if (appState.storedBonusMs > 0) {
+            // US-18.1: using while Fasting is only allowed while a safe amount remains
+            if (appState.storedBonusMs > 0 && canOpenAmountPicker('use')) {
                 openAmountPicker('use');
             }
         });
