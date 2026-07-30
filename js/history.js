@@ -59,11 +59,11 @@ function renderHistory() {
                 extras += `<span class="history-tag manual">Manual</span>`;
             }
             if (r.bonusMs > 0) {
-                const label = isEating ? `Reward +${Math.round(r.bonusMs / 60000)}m window` : `Reward -${Math.round(r.bonusMs / 60000)}m fast`;
+                const label = isEating ? `Reward +${formatMinutesBadge(Math.round(r.bonusMs / 60000))} window` : `Reward -${formatMinutesBadge(Math.round(r.bonusMs / 60000))} fast`;
                 extras += `<span class="history-tag bonus">${label}</span>`;
             }
             if (r.penaltyMs > 0) {
-                extras += `<span class="history-tag penalty">Penalty +${Math.round(r.penaltyMs / 60000)}m</span>`;
+                extras += `<span class="history-tag penalty">Penalty +${formatMinutesBadge(Math.round(r.penaltyMs / 60000))}</span>`;
             }
 
             html += `

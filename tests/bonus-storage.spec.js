@@ -422,3 +422,37 @@ test('US-18.1: preview is hidden when using stored bonus from Potential Eating, 
     await page.locator('#stored-bonus-indicator').click();
     await expect(page.locator('#amount-picker-preview')).toHaveClass(/hidden/);
 });
+
+// --- US-19: hours+minutes formatting once a stored/picker amount reaches 60 minutes ---
+
+test('US-19: header stored-bonus indicator shows hours+minutes at a non-exact-hour amount', async ({ page }) => {
+    await setAppState(page, makeEatingState({ storedBonusMs: 90 * 60 * 1000 }));
+    await page.goto('/');
+    await expect(page.locator('#stored-bonus-indicator')).toHaveText('+1h 30m stored');
+});
+
+test('US-19: header stored-bonus indicator shows plain hours at an exact-hour multiple', async ({ page }) => {
+    await setAppState(page, makeEatingState({ storedBonusMs: 120 * 60 * 1000 }));
+    await page.goto('/');
+    await expect(page.locator('#stored-bonus-indicator')).toHaveText('+2h stored');
+});
+
+test('US-19: amount picker slider value switches from raw minutes to hours+minutes across the 60m boundary', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeFastingState({
+        storedBonusMs: 200 * 60 * 1000,
+        windowEndTime: now + DURATION_FASTING_MS,
+    }));
+    await page.goto('/');
+
+    await page.locator('#stored-bonus-indicator').click();
+
+    await page.evaluate(() => adjustAmountPicker(59));
+    await expect(page.locator('#amount-picker-value')).toHaveText('59m');
+
+    await page.evaluate(() => adjustAmountPicker(1));
+    await expect(page.locator('#amount-picker-value')).toHaveText('1h');
+
+    await page.evaluate(() => adjustAmountPicker(15));
+    await expect(page.locator('#amount-picker-value')).toHaveText('1h 15m');
+});

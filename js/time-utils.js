@@ -28,6 +28,13 @@ function renderTime(timestamp) {
     return `${timeStr}<sup class="day-label">${dayName}</sup>`;
 }
 
+function formatMinutesBadge(totalMinutes) {
+    if (totalMinutes < 60) return `${totalMinutes}m`;
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
 function formatDuration(ms) {
     if (ms < 0) ms = 0;
     const totalSeconds = Math.floor(ms / 1000);
