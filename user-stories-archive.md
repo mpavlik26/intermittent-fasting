@@ -1,4 +1,4 @@
-Archive of completed user stories (slices 1-7, US-B1 through US-17), moved out of `user-stories.md` to keep the live file lean. All content below is unmodified — see `user-stories.md` for the standing methodology rules, the current in-progress slice, and the archiving convention.
+Archive of completed user stories (slices 1-8, US-B1 through US-18.1), moved out of `user-stories.md` to keep the live file lean. All content below is unmodified — see `user-stories.md` for the standing methodology rules, the current in-progress slice, and the archiving convention.
 
   - The first slice will have the following background and will contain the following user stories (Starting the 3rd slide I started to denote all user stories with `US-<story number>` identification. For being able to identify somehow also the stories in the 1st and the 2nd slice, those stories have `US-B<story-number>` as their identification (B here means "basic"))
     - Background:
@@ -260,3 +260,29 @@ Archive of completed user stories (slices 1-7, US-B1 through US-17), moved out o
         - "penalty 2" is preserved to 1 hour 20 minutes
         - Fasting will take default 16 hours + 1 hour (penalty 1) + 1 hour 20 minutes (penalty 2) = 18 hours 20 minutes
         - Fasting window will end at 18:40 next day (instead of 20:00 next day under the old quadruple penalty)
+- The eighth slice will have the following background and user stories:
+  - Background:
+    - I want to store the bonuses for worse times and use them later for prolonging Eating or shortening Fasting windows
+  - User stories:
+    - US-18:
+      - As the user having an already-applied bonus in my current window (the fasting bonus badge shown during the Eating window, or the eating bonus badge shown during the Fasting window), I'd like to be able to move some of that bonus into a personal storage for later use, if that's better for me according to my plans
+        - I do this by tapping the bonus badge, then choosing how many minutes to move to storage using a slider combined with "+" / "-" buttons for adjusting by a single minute
+        - Once confirmed, the chosen amount is subtracted from the bonus applied to the current window and the window's end time is adjusted accordingly
+        - I can only choose an amount up to what's currently applied to the window - not more
+      - As the user I clearly see my stored bonus minutes total in the header area, next to the current time, whenever I have more than 0 minutes stored
+      - As the user having some bonus minutes stored, I'd like to be able to use them in whichever window I'm currently in. I do this by tapping the stored bonus indicator, then choosing how many minutes to use with the same slider + "+" / "-" buttons, and confirming
+        - if I'm in the Eating window, its end time is immediately prolonged by the chosen amount
+        - if I'm in the Fasting window, its end time is immediately shortened by the chosen amount
+        - if I'm in the "potential eating" window (no window started yet), the chosen amount is reserved and automatically applied to prolong the Eating window once I log my first meal
+        - I can only choose an amount up to what I currently have in storage - not more
+    - US-18.1:
+      - As the user opening either the "Move Bonus to Storage" or "Use Stored Bonus" dialog, I always see the window's resulting end time, updating live as I move the slider, so I can see the consequence of my choice before confirming - this applies whenever a window end time exists, not just the risky cases below (the only exception is using stored bonus while in "potential eating", where no window exists yet)
+      - As the user opening the "Move Bonus to Storage" dialog while in the Eating window, I don't want to be offered more minutes than can actually be moved without pushing the window's end time into the past
+        - The slider's maximum is the smaller of: the bonus currently applied to the window, and the time remaining until the window's end time, both computed at the moment the dialog opens
+        - If enough time passes while the dialog is open that my selected amount would now push the end time into the past, only the amount that's still safe to move gets applied when I confirm - silently, without extra feedback
+        - If there's already nothing that can safely be moved (the window's end time is at or before the current time), tapping the bonus badge doesn't open this dialog
+      - As the user opening the "Use Stored Bonus" dialog while in the Fasting window, I don't want to be offered more minutes than can actually shorten the window without pushing its end time into the past
+        - The slider's maximum is the smaller of: my total stored bonus, and the time remaining until the window's end time, both computed at the moment the dialog opens
+        - If enough time passes while the dialog is open that my selected amount would now push the end time into the past, only the amount that's still safe to use gets applied when I confirm - silently, without extra feedback
+        - If there's already nothing that can safely be used (the window's end time is at or before the current time), tapping the stored bonus indicator doesn't open this dialog
+      - These extra limits (max cap, confirm-time clamp, hiding when zero) only apply to storing while Eating and using while Fasting - storing while Fasting, using while Eating, and using while in "potential eating" only ever push the relevant end time later (or don't touch a window end time at all), so they're unaffected by them

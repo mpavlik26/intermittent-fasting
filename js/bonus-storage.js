@@ -50,7 +50,7 @@ function renderAmountPicker() {
     elAmountPickerSlider.value = amountPickerValueMinutes;
     const fillPct = amountPickerMaxMinutes > 0 ? (amountPickerValueMinutes / amountPickerMaxMinutes) * 100 : 0;
     elAmountPickerFill.style.width = `${fillPct}%`;
-    elAmountPickerValue.textContent = `${amountPickerValueMinutes}m`;
+    elAmountPickerValue.textContent = formatMinutesBadge(amountPickerValueMinutes);
     renderAmountPickerPreview();
 }
 
@@ -105,7 +105,7 @@ function confirmAmountPicker() {
 function updateStoredBonusIndicator() {
     const mins = Math.floor(appState.storedBonusMs / 60000);
     if (mins > 0) {
-        elStoredBonusIndicator.textContent = `+${mins}m stored`;
+        elStoredBonusIndicator.textContent = `+${formatMinutesBadge(mins)} stored`;
         elStoredBonusIndicator.classList.remove('hidden');
         elStoredBonusIndicator.classList.toggle('disabled', !canOpenAmountPicker('use'));
     } else {

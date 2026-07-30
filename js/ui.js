@@ -41,12 +41,12 @@ function tick() {
         // Prediction 1: Prolonging
         const predictedPenalty1 = PROLONGING_PENALTY_MULTIPLIER * Math.max(0, now - originalEatingEnd);
         const totalPenalty1 = predictedPenalty1 + appState.prematureStartPenaltyMs;
-        elBreakProlongPenalty.textContent = `${Math.floor(totalPenalty1 / 60000)}m`;
+        elBreakProlongPenalty.textContent = formatMinutesBadge(Math.floor(totalPenalty1 / 60000));
         elBreakProlongEnd.innerHTML = renderTime(now + DURATION_FASTING_MS + totalPenalty1);
 
         // Prediction 2: Premature Start
         const predictedPenalty2 = PREMATURE_START_PENALTY_MULTIPLIER * Math.max(0, appState.windowEndTime - now);
-        elBreakPrematurePenalty.textContent = `${Math.floor(predictedPenalty2 / 60000)}m`;
+        elBreakPrematurePenalty.textContent = formatMinutesBadge(Math.floor(predictedPenalty2 / 60000));
         // Interval: Starts now, Ends after (Eating 8h + Fasting 16h + Penalty 2)
         const nextFastStart = now + DURATION_EATING_MS;
         const nextFastEnd = nextFastStart + DURATION_FASTING_MS + predictedPenalty2;
@@ -58,7 +58,7 @@ function tick() {
             const pendingBonusMs = Math.floor((now - appState.windowEndTime) / BONUS_DIVISOR);
             const bonusMins = Math.floor(pendingBonusMs / (60 * 1000));
             if (bonusMins > 0) {
-                elBonusText.textContent = `+${bonusMins}m pending reward`;
+                elBonusText.textContent = `+${formatMinutesBadge(bonusMins)} pending reward`;
                 elBonusBadge.classList.remove('hidden');
             } else {
                 elBonusBadge.classList.add('hidden');
@@ -188,7 +188,7 @@ function updateUI() {
         // US-3 UI Feedback
         if (appState.fastingBonusMs > 0) {
             const bonusMins = Math.floor(appState.fastingBonusMs / (60 * 1000));
-            elBonusText.textContent = `+${bonusMins}m fasting bonus applied!`;
+            elBonusText.textContent = `+${formatMinutesBadge(bonusMins)} fasting bonus applied!`;
             elBonusBadge.classList.remove('hidden');
             // US-18.1: only storable while there's still a safe (non-past-pushing) amount to move
             elBonusBadge.classList.toggle('storable', canOpenAmountPicker('store'));
@@ -244,7 +244,7 @@ function updateUI() {
         // US-4 UI Feedback
         if (appState.eatingBonusMs > 0) {
             const bonusMins = Math.floor(appState.eatingBonusMs / (60 * 1000));
-            elBonusText.textContent = `-${bonusMins}m fast reward applied!`;
+            elBonusText.textContent = `-${formatMinutesBadge(bonusMins)} fast reward applied!`;
             elBonusBadge.classList.remove('hidden');
             elBonusBadge.classList.add('storable'); // US-18: Click to move into storage
             elStateDescription.textContent += ` Fast shortened by ${bonusMins}m because you finished eating earlier.`;
@@ -256,7 +256,7 @@ function updateUI() {
         // US-8 Penalty Badge
         if (appState.appliedPenaltyMs > 0) {
             const penaltyMins = Math.floor(appState.appliedPenaltyMs / 60000);
-            elPenaltyText.textContent = `+${penaltyMins}m penalty applied!`;
+            elPenaltyText.textContent = `+${formatMinutesBadge(penaltyMins)} penalty applied!`;
             elPenaltyBadge.classList.remove('hidden');
         } else {
             elPenaltyBadge.classList.add('hidden');

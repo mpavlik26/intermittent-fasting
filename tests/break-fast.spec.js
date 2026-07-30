@@ -53,7 +53,7 @@ test('Option 1: prolong eating transitions to fasting with penalty badge', async
 
     await expect(page.locator('#current-state')).toHaveText('Fasting Window');
     await expect(page.locator('#penalty-badge')).toBeVisible();
-    await expect(page.locator('#penalty-text')).toContainText('+120m penalty applied!');
+    await expect(page.locator('#penalty-text')).toContainText('+2h penalty applied!');
 });
 
 test('Option 1: prolong eating fasting window is longer than standard 16h', async ({ page }) => {
@@ -233,4 +233,37 @@ test('US-15: retrospective entry exactly on the fast window boundaries counts as
         prolongingPenaltyMs: appState.prolongingPenaltyMs,
     }));
     expect(prolongingPenaltyMs).toBeGreaterThan(0);
+});
+
+// --- US-19: hours+minutes formatting once a penalty amount reaches 60 minutes ---
+
+test('US-19: applied penalty badge shows hours+minutes for a non-exact-hour amount', async ({ page }) => {
+    const now = Date.now();
+    // lastEatingWindowTargetMs was 45 min ago → penalty = 2 * 45m = 90m = 1h 30m
+    await setAppState(page, makeFastingState({
+        lastEatingWindowTargetMs: now - 45 * 60 * 1000,
+    }));
+    await page.goto('/');
+
+    await page.click('#btn-toggle-break');
+    await page.click('#btn-break-prolong');
+
+    await expect(page.locator('#penalty-text')).toContainText('+1h 30m penalty applied!');
+});
+
+test('US-19: break-fast prolong/premature penalty predictions switch to hours+minutes at 60 or more', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeFastingState({
+        // prolong prediction = 2 * 45m = 90m = 1h 30m
+        lastEatingWindowTargetMs: now - 45 * 60 * 1000,
+        // premature prediction = 2 * 31m ≈ 62m, comfortably above the 60m boundary
+        // despite the real time that elapses between "now" and the assertion below
+        windowEndTime: now + 31 * 60 * 1000,
+    }));
+    await page.goto('/');
+
+    await page.click('#btn-toggle-break');
+
+    await expect(page.locator('#break-prolong-penalty')).toHaveText('1h 30m');
+    await expect(page.locator('#break-premature-penalty')).toHaveText(/^1h [0-2]m$/);
 });

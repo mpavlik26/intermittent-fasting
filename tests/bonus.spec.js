@@ -5,6 +5,7 @@ const {
     DURATION_EATING_MS,
     DURATION_FASTING_MS,
     makeEatingState,
+    makeFastingState,
     makePotentialState,
     setAppState,
     advanceTime,
@@ -115,5 +116,29 @@ test('US-4: fasting bonus badge visible with correct text after eating bonus app
 
     await expect(page.locator('#current-state')).toHaveText('Fasting Window');
     await expect(page.locator('#bonus-badge').first()).toBeVisible();
-    await expect(page.locator('#bonus-text').first()).toContainText(/^-5[5-9]m fast reward applied!$|^-60m fast reward applied!$/);
+    await expect(page.locator('#bonus-text').first()).toContainText(/^-5[5-9]m fast reward applied!$|^-1h fast reward applied!$/);
+});
+
+// --- US-19: hours+minutes formatting once a badge amount reaches 60 minutes ---
+
+test('US-19: fasting bonus badge shows hours+minutes at 60 or more', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeEatingState({
+        fastingBonusMs: 90 * 60 * 1000,
+        windowEndTime: now + DURATION_EATING_MS + 90 * 60 * 1000,
+    }));
+    await page.goto('/');
+
+    await expect(page.locator('#bonus-text').first()).toContainText('+1h 30m fasting bonus applied!');
+});
+
+test('US-19: fast-reward badge shows plain hours at an exact-hour multiple', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeFastingState({
+        eatingBonusMs: 120 * 60 * 1000,
+        windowEndTime: now + DURATION_FASTING_MS,
+    }));
+    await page.goto('/');
+
+    await expect(page.locator('#bonus-text').first()).toContainText('-2h fast reward applied!');
 });

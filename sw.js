@@ -1,15 +1,15 @@
-const CACHE_NAME = 'fasting-tracker-US-18.1-ver-1';
+const CACHE_NAME = 'fasting-tracker-US-19-ver-1';
 const ASSETS = [
   './',
   './index.html',
   './styles.css?v=11',
   './js/state.js?v=2',
-  './js/time-utils.js?v=1',
-  './js/history.js?v=1',
+  './js/time-utils.js?v=2',
+  './js/history.js?v=2',
   './js/transitions.js?v=1',
   './js/simulator.js?v=1',
-  './js/bonus-storage.js?v=2',
-  './js/ui.js?v=2',
+  './js/bonus-storage.js?v=3',
+  './js/ui.js?v=3',
   './js/manual-session.js?v=1',
   './js/main.js?v=2',
   './manifest.json?v=6',
