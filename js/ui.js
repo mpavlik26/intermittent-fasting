@@ -5,28 +5,28 @@ function tick() {
     // Update main clock
     elCurrentTime.textContent = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // Transitions & US-5 Forecasts
+    // Transitions & US-5/US-20 Forecasts
     if (appState.currentState === STATES.EATING) {
         if (now >= appState.windowEndTime) {
             transitionToFasting();
             return;
         }
 
-        // US-5: Eating Window Forecast
-        const currentPenalties = appState.prolongingPenaltyMs + appState.prematureStartPenaltyMs;
+        // US-5/US-20: Eating Window Forecast — eventual Fasting window length, from live
+        // Fasting bonus/penalty fields only (Eating penalty no longer affects Fasting window length)
+        const fastingBonusMs = appState.fastingBonusMs + appState.pendingFastingBonusUseMs;
+        const fastingPenaltyMs = appState.fastingPenaltyMs;
 
         if (appState.lastMealTime) {
             elForecastLastMealRow.classList.remove('hidden');
             elForecastLastMealTime.innerHTML = renderTime(appState.lastMealTime);
-            const bonusLastMeal = getEatingBonusForTime(appState.lastMealTime);
-            const forecastLast = appState.lastMealTime + DURATION_FASTING_MS - bonusLastMeal + currentPenalties;
+            const forecastLast = appState.lastMealTime + DURATION_FASTING_MS - fastingBonusMs + fastingPenaltyMs;
             elForecastFastingEndLast.innerHTML = renderTime(forecastLast);
         } else {
             elForecastLastMealRow.classList.add('hidden');
         }
 
-        const bonusNow = getEatingBonusForTime(now);
-        const forecastNow = now + DURATION_FASTING_MS - bonusNow + currentPenalties;
+        const forecastNow = now + DURATION_FASTING_MS - fastingBonusMs + fastingPenaltyMs;
         elForecastFastingEndNow.innerHTML = renderTime(forecastNow);
 
     } else if (appState.currentState === STATES.FASTING) {
@@ -35,44 +35,46 @@ function tick() {
             return;
         }
 
-        // US-7 Real-time predictions for Break Fast options
+        // US-7/US-20 Real-time predictions for Break Fast options
         const originalEatingEnd = appState.lastEatingWindowTargetMs;
 
-        // Prediction 1: Prolonging
-        const predictedPenalty1 = PROLONGING_PENALTY_MULTIPLIER * Math.max(0, now - originalEatingEnd);
-        const totalPenalty1 = predictedPenalty1 + appState.prematureStartPenaltyMs;
-        elBreakProlongPenalty.textContent = formatMinutesBadge(Math.floor(totalPenalty1 / 60000));
-        elBreakProlongEnd.innerHTML = renderTime(now + DURATION_FASTING_MS + totalPenalty1);
+        // Prediction 1: Prolonging — the new Eating penalty is deferred to the next Eating
+        // window; it does NOT extend this restarted Fasting window
+        const predictedEatingPenalty = PROLONGING_PENALTY_MULTIPLIER * Math.max(0, now - originalEatingEnd);
+        elBreakProlongPenalty.textContent = formatMinutesBadge(Math.floor(predictedEatingPenalty / 60000));
+        const prolongRestartedEnd = now + DURATION_FASTING_MS - appState.fastingBonusMs + appState.fastingPenaltyMs;
+        elBreakProlongEnd.innerHTML = renderTime(prolongRestartedEnd);
 
-        // Prediction 2: Premature Start
-        const predictedPenalty2 = PREMATURE_START_PENALTY_MULTIPLIER * Math.max(0, appState.windowEndTime - now);
-        elBreakPrematurePenalty.textContent = formatMinutesBadge(Math.floor(predictedPenalty2 / 60000));
-        // Interval: Starts now, Ends after (Eating 8h + Fasting 16h + Penalty 2)
+        // Prediction 2: Premature Start — the new Fasting penalty is deferred to the next
+        // Fasting window (after the upcoming standard Eating window)
+        const predictedFastingPenalty = PREMATURE_START_PENALTY_MULTIPLIER * Math.max(0, appState.windowEndTime - now);
+        elBreakPrematurePenalty.textContent = formatMinutesBadge(Math.floor(predictedFastingPenalty / 60000));
+        // Interval: Starts now, Ends after (Eating 8h + Fasting 16h + Penalty)
         const nextFastStart = now + DURATION_EATING_MS;
-        const nextFastEnd = nextFastStart + DURATION_FASTING_MS + predictedPenalty2;
+        const nextFastEnd = nextFastStart + DURATION_FASTING_MS + predictedFastingPenalty;
         elBreakPrematureInterval.innerHTML = `${renderTime(nextFastStart)} to ${renderTime(nextFastEnd)}`;
 
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
-        // US-3 Real-time feedback: Calculate pending bonus
-        if (appState.windowEndTime && now > appState.windowEndTime) {
-            const pendingBonusMs = Math.floor((now - appState.windowEndTime) / BONUS_DIVISOR);
-            const bonusMins = Math.floor(pendingBonusMs / (60 * 1000));
+        // US-3/US-20 Real-time feedback: pending Fasting bonus (no divisor, full 1:1)
+        const pendingFastingBonusMs = (appState.windowEndTime && now > appState.windowEndTime)
+            ? (now - appState.windowEndTime)
+            : 0;
+        if (pendingFastingBonusMs > 0) {
+            const bonusMins = Math.floor(pendingFastingBonusMs / (60 * 1000));
             if (bonusMins > 0) {
-                elBonusText.textContent = `+${formatMinutesBadge(bonusMins)} pending reward`;
-                elBonusBadge.classList.remove('hidden');
+                elFastingBonusText.textContent = `+${formatMinutesBadge(bonusMins)} pending reward`;
+                elFastingBonusBadge.classList.remove('hidden');
             } else {
-                elBonusBadge.classList.add('hidden');
+                elFastingBonusBadge.classList.add('hidden');
             }
         } else {
-            elBonusBadge.classList.add('hidden');
+            elFastingBonusBadge.classList.add('hidden');
         }
 
-        // US-5: Potential Eating Forecast
-        const pendingBonusMs = (appState.windowEndTime && now > appState.windowEndTime)
-            ? Math.floor((now - appState.windowEndTime) / BONUS_DIVISOR)
-            : 0;
-        const forecastedEatingEnd = now + DURATION_EATING_MS + pendingBonusMs;
-        elForecastEatingEnd.innerHTML = renderTime(forecastedEatingEnd);
+        // US-5/US-20: Potential Eating Forecast — exactly the window transitionToEating() would
+        // create now: banked/stored Eating bonus, Eating penalty and cascade-skips all included
+        const bonusForForecastMs = pendingFastingBonusMs > 0 ? pendingFastingBonusMs : appState.fastingBonusMs;
+        elForecastEatingEnd.innerHTML = renderTime(planEatingWindow(now, bonusForForecastMs).endTime);
     }
 
     // Update timers & labels (US-9: Global updates for midnight transitions)
@@ -153,7 +155,7 @@ function setupHoldToConfirm(btn, action, defaultLabel) {
 function updateUI() {
     const state = appState.currentState;
     elStatusCard.setAttribute('data-state', state);
-    updateStoredBonusIndicator();
+    updateStoredBonusIndicators();
 
     // US-8 Handle debug visibility
     if (appState.isDebugUnlocked) {
@@ -166,13 +168,16 @@ function updateUI() {
     elBtnFirstMeal.classList.add('hidden');
     elBtnLastMeal.classList.add('hidden');
     elBreakFastSection.classList.add('hidden');
-    elPenaltyBadge.classList.add('hidden');
+    elFastingBonusBadge.classList.add('hidden');
+    elEatingBonusBadge.classList.add('hidden');
+    elFastingPenaltyBadge.classList.add('hidden');
+    elEatingPenaltyBadge.classList.add('hidden');
 
     if (state === STATES.POTENTIAL_EATING) {
         elCurrentStateTitle.textContent = "Potential Eating Window";
         elStateDescription.textContent = "You can start your eating window when you are ready.";
         elBtnFirstMeal.classList.remove('hidden');
-        // elBonusBadge visibility handled by tick() for real-time updates
+        // elFastingBonusBadge visibility handled by tick() for real-time updates
 
         // US-5: Update Forecast visibility
         elForecastSection.classList.remove('hidden');
@@ -183,29 +188,42 @@ function updateUI() {
     else if (state === STATES.EATING) {
         elCurrentStateTitle.textContent = "Eating Window";
 
-        let desc = "You have 8 hours to consume your daily meals.";
+        // Real window length (8h + Eating bonus - Eating penalty + 8h per cascade-skip)
+        const totalMins = Math.round((appState.windowEndTime - appState.windowStartTime) / 60000);
+        let desc = totalMins === 480
+            ? "You have 8 hours to consume your daily meals."
+            : `You have ${formatMinutesBadge(totalMins)} to consume your daily meals.`;
 
-        // US-3 UI Feedback
-        if (appState.fastingBonusMs > 0) {
-            const bonusMins = Math.floor(appState.fastingBonusMs / (60 * 1000));
-            elBonusText.textContent = `+${formatMinutesBadge(bonusMins)} fasting bonus applied!`;
-            elBonusBadge.classList.remove('hidden');
-            // US-18.1: only storable while there's still a safe (non-past-pushing) amount to move
-            elBonusBadge.classList.toggle('storable', canOpenAmountPicker('store'));
-            desc = `You earned a ${bonusMins}m bonus for prolonged fasting! Total window: ${8 + Math.floor(bonusMins / 60)}h ${bonusMins % 60}m.`;
+        // US-4/US-20 UI Feedback: Eating bonus extends THIS Eating window
+        // (eatingBonusMs itself is already consumed/reset on entry, so the amount applied to
+        // this window lives in appliedEatingBonusMs; it is informational, not storable.)
+        elEatingBonusBadge.classList.remove('storable');
+        if (appState.appliedEatingBonusMs > 0) {
+            const bonusMins = Math.floor(appState.appliedEatingBonusMs / (60 * 1000));
+            elEatingBonusText.textContent = `+${formatMinutesBadge(bonusMins)} eating bonus applied!`;
+            elEatingBonusBadge.classList.remove('hidden');
+            desc = `You earned a ${formatMinutesBadge(bonusMins)} bonus for finishing eating early! Total window: ${formatMinutesBadge(totalMins)}.`;
         } else {
-            elBonusBadge.classList.add('hidden');
-            elBonusBadge.classList.remove('storable');
+            elEatingBonusBadge.classList.add('hidden');
+        }
+
+        // US-20 Penalty Badge: Eating penalty shortened THIS Eating window
+        if (appState.appliedEatingPenaltyMs > 0) {
+            const penaltyMins = Math.floor(appState.appliedEatingPenaltyMs / 60000);
+            elEatingPenaltyText.textContent = `-${formatMinutesBadge(penaltyMins)} penalty applied!`;
+            elEatingPenaltyBadge.classList.remove('hidden');
+        } else {
+            elEatingPenaltyBadge.classList.add('hidden');
         }
 
         if (appState.lastMealTime) {
             desc += ` Last meal logged at ${formatTimeOnly(appState.lastMealTime)}.`;
 
-            // US-4 Real-time feedback in Eating state
+            // US-4/US-20 Real-time feedback in Eating state
             const pendingEatingBonus = calculateEatingBonus();
             if (pendingEatingBonus > 0) {
                 const bonusMins = Math.floor(pendingEatingBonus / (60 * 1000));
-                desc += ` (Will reward ${bonusMins}m shorter fast)`;
+                desc += ` (Will reward ${formatMinutesBadge(bonusMins)} longer next eating window)`;
             }
         }
         elStateDescription.textContent = desc;
@@ -221,9 +239,6 @@ function updateUI() {
         elBtnLastMeal.classList.remove('logged');
         elBtnLastMeal.textContent = "Log Last Meal";
         elBtnLastMeal.disabled = false;
-
-        // Penalty badge should NOT be shown in the Eating window
-        elPenaltyBadge.classList.add('hidden');
 
         // US-5: Update Forecast visibility
         elForecastSection.classList.remove('hidden');
@@ -241,25 +256,37 @@ function updateUI() {
 
         // elStartTimeVal/elEndTimeVal now handled by tick() for dynamic US-9 updates
 
-        // US-4 UI Feedback
-        if (appState.eatingBonusMs > 0) {
-            const bonusMins = Math.floor(appState.eatingBonusMs / (60 * 1000));
-            elBonusText.textContent = `-${formatMinutesBadge(bonusMins)} fast reward applied!`;
-            elBonusBadge.classList.remove('hidden');
-            elBonusBadge.classList.add('storable'); // US-18: Click to move into storage
-            elStateDescription.textContent += ` Fast shortened by ${bonusMins}m because you finished eating earlier.`;
+        // US-3/US-20 UI Feedback: Fasting bonus shortened THIS Fasting window
+        if (appState.fastingBonusMs > 0) {
+            const bonusMins = Math.floor(appState.fastingBonusMs / (60 * 1000));
+            elFastingBonusText.textContent = `-${formatMinutesBadge(bonusMins)} fasting bonus applied!`;
+            elFastingBonusBadge.classList.remove('hidden');
+            elFastingBonusBadge.classList.toggle('storable', canOpenAmountPicker('store', 'fasting')); // US-18: Click to move into storage
+            elStateDescription.textContent += ` Fast shortened by ${formatMinutesBadge(bonusMins)} because you finished eating earlier.`;
         } else {
-            elBonusBadge.classList.add('hidden');
-            elBonusBadge.classList.remove('storable');
+            elFastingBonusBadge.classList.add('hidden');
+            elFastingBonusBadge.classList.remove('storable');
         }
 
-        // US-8 Penalty Badge
-        if (appState.appliedPenaltyMs > 0) {
-            const penaltyMins = Math.floor(appState.appliedPenaltyMs / 60000);
-            elPenaltyText.textContent = `+${formatMinutesBadge(penaltyMins)} penalty applied!`;
-            elPenaltyBadge.classList.remove('hidden');
+        // US-20: Eating bonus banked by finishing early, waiting for the next Eating window.
+        // Storable (US-18) — this is where "Move Eating Bonus to Storage" is reachable.
+        if (appState.eatingBonusMs > 0) {
+            const bonusMins = Math.floor(appState.eatingBonusMs / (60 * 1000));
+            elEatingBonusText.textContent = `+${formatMinutesBadge(bonusMins)} eating bonus banked!`;
+            elEatingBonusBadge.classList.remove('hidden');
+            elEatingBonusBadge.classList.toggle('storable', canOpenAmountPicker('store', 'eating'));
         } else {
-            elPenaltyBadge.classList.add('hidden');
+            elEatingBonusBadge.classList.add('hidden');
+            elEatingBonusBadge.classList.remove('storable');
+        }
+
+        // US-8/US-20 Penalty Badge: Fasting penalty extended THIS Fasting window
+        if (appState.appliedFastingPenaltyMs > 0) {
+            const penaltyMins = Math.floor(appState.appliedFastingPenaltyMs / 60000);
+            elFastingPenaltyText.textContent = `+${formatMinutesBadge(penaltyMins)} penalty applied!`;
+            elFastingPenaltyBadge.classList.remove('hidden');
+        } else {
+            elFastingPenaltyBadge.classList.add('hidden');
         }
 
         // US-5/US-13: Show forecast section in fasting state (for eating window simulator link)

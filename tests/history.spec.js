@@ -81,14 +81,14 @@ test('Manual tag shown for manual sessions in history', async ({ page }) => {
     await expect(page.locator('.history-tag.manual')).toBeVisible();
 });
 
-test('Bonus tag shown when fasting bonus was applied to eating window', async ({ page }) => {
+test('Bonus tag shown when Eating bonus was applied to eating window', async ({ page }) => {
     const now = Date.now();
     const bonusMs = 30 * 60 * 1000; // 30 min bonus
     await setAppState(page, makeEatingState({
         windowStartTime: now - DURATION_EATING_MS - bonusMs + 5000,
         windowEndTime: now + 5000,
         lastEatingWindowTargetMs: now + 5000,
-        fastingBonusMs: bonusMs,
+        appliedEatingBonusMs: bonusMs,
     }));
     await page.goto('/');
 
@@ -99,14 +99,34 @@ test('Bonus tag shown when fasting bonus was applied to eating window', async ({
     await expect(page.locator('.history-tag.bonus')).toContainText('Reward +30m window');
 });
 
-test('Penalty tag shown when penalty was applied during fasting window', async ({ page }) => {
+test('US-20: Bonus tag shown on a Fasting record for the applied Fasting bonus', async ({ page }) => {
+    const now = Date.now();
+    const bonusMs = 45 * 60 * 1000;
+    await setAppState(page, makeFastingState({
+        windowStartTime: now - DURATION_FASTING_MS + bonusMs + 5000,
+        windowEndTime: now + 5000,
+        fastingBonusMs: bonusMs,
+        appliedFastingBonusMs: bonusMs,
+    }));
+    await page.goto('/');
+
+    await advanceTime(page, 10000);
+    await expect(page.locator('#current-state')).toHaveText('Potential Eating Window');
+
+    await page.click('#btn-toggle-history');
+    const record = page.locator('.history-record-item[data-type="fasting"]');
+    await expect(record.locator('.history-tag.bonus')).toContainText('Reward -45m fast');
+    await expect(record.locator('.history-tag.penalty')).toHaveCount(0);
+});
+
+test('Penalty tag shown when Fasting penalty was applied during fasting window', async ({ page }) => {
     const now = Date.now();
     const penaltyMs = 60 * 60 * 1000; // 1h penalty
     await setAppState(page, makeFastingState({
-        windowStartTime: now - DURATION_FASTING_MS + 5000,
+        windowStartTime: now - DURATION_FASTING_MS - penaltyMs + 5000,
         windowEndTime: now + 5000,
-        appliedPenaltyMs: penaltyMs,
-        prolongingPenaltyMs: penaltyMs,
+        fastingPenaltyMs: penaltyMs,
+        appliedFastingPenaltyMs: penaltyMs,
     }));
     await page.goto('/');
 
@@ -115,6 +135,41 @@ test('Penalty tag shown when penalty was applied during fasting window', async (
     await page.click('#btn-toggle-history');
     await expect(page.locator('.history-tag.penalty')).toBeVisible();
     await expect(page.locator('.history-tag.penalty')).toContainText('Penalty +1h');
+});
+
+test('US-20: Penalty tag shown on an Eating record for the applied Eating penalty', async ({ page }) => {
+    const now = Date.now();
+    const penaltyMs = 45 * 60 * 1000;
+    await setAppState(page, makeEatingState({
+        windowStartTime: now - DURATION_EATING_MS + penaltyMs + 5000,
+        windowEndTime: now + 5000,
+        lastEatingWindowTargetMs: now + 5000,
+        appliedEatingPenaltyMs: penaltyMs,
+    }));
+    await page.goto('/');
+
+    await advanceTime(page, 10000);
+
+    await page.click('#btn-toggle-history');
+    const record = page.locator('.history-record-item[data-type="eating"]');
+    await expect(record.locator('.history-tag.penalty')).toContainText('Penalty +45m');
+    await expect(record.locator('.history-tag.bonus')).toHaveCount(0);
+});
+
+test('US-20: a pending Fasting bonus never shows up as a tag on an Eating record', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeEatingState({
+        windowStartTime: now - DURATION_EATING_MS + 5000,
+        windowEndTime: now + 5000,
+        lastEatingWindowTargetMs: now + 5000,
+        fastingBonusMs: 30 * 60 * 1000, // still pending for the NEXT fasting window
+    }));
+    await page.goto('/');
+
+    await advanceTime(page, 10000);
+
+    await page.click('#btn-toggle-history');
+    await expect(page.locator('.history-tag.bonus')).toHaveCount(0);
 });
 
 // --- US-19: hours+minutes formatting once a tag amount reaches 60 minutes ---
@@ -126,7 +181,7 @@ test('US-19: Bonus tag shows hours+minutes for a non-exact-hour reward', async (
         windowStartTime: now - DURATION_EATING_MS - bonusMs + 5000,
         windowEndTime: now + 5000,
         lastEatingWindowTargetMs: now + 5000,
-        fastingBonusMs: bonusMs,
+        appliedEatingBonusMs: bonusMs,
     }));
     await page.goto('/');
 
@@ -140,10 +195,10 @@ test('US-19: Penalty tag shows hours+minutes for a non-exact-hour penalty', asyn
     const now = Date.now();
     const penaltyMs = 130 * 60 * 1000; // 2h 10m penalty
     await setAppState(page, makeFastingState({
-        windowStartTime: now - DURATION_FASTING_MS + 5000,
+        windowStartTime: now - DURATION_FASTING_MS - penaltyMs + 5000,
         windowEndTime: now + 5000,
-        appliedPenaltyMs: penaltyMs,
-        prolongingPenaltyMs: penaltyMs,
+        fastingPenaltyMs: penaltyMs,
+        appliedFastingPenaltyMs: penaltyMs,
     }));
     await page.goto('/');
 

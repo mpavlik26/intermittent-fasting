@@ -1,4 +1,5 @@
 // US-7: Breaking fast prematurely — two penalty options
+// US-20: Option 1 (prolong) now creates a deferred Eating penalty; Option 2 (premature) a deferred Fasting penalty
 const { test, expect } = require('@playwright/test');
 const {
     DURATION_EATING_MS,
@@ -7,6 +8,9 @@ const {
     makeFastingState,
     setAppState,
 } = require('./helpers');
+
+const MIN = 60 * 1000;
+const HOUR = 60 * MIN;
 
 test('break-fast section is hidden during eating', async ({ page }) => {
     await setAppState(page, makeEatingState());
@@ -40,11 +44,10 @@ test('break-fast panel expands on toggle click', async ({ page }) => {
     await expect(page.locator('#break-fast-content')).not.toHaveClass(/collapsed/);
 });
 
-test('Option 1: prolong eating transitions to fasting with penalty badge', async ({ page }) => {
+test('Option 1: prolong eating restarts the fasting window', async ({ page }) => {
     const now = Date.now();
-    // lastEatingWindowTargetMs was 1 hour ago → penalty = 2 * 1h = 120m
     await setAppState(page, makeFastingState({
-        lastEatingWindowTargetMs: now - 60 * 60 * 1000,
+        lastEatingWindowTargetMs: now - HOUR,
     }));
     await page.goto('/');
 
@@ -52,35 +55,104 @@ test('Option 1: prolong eating transitions to fasting with penalty badge', async
     await page.click('#btn-break-prolong');
 
     await expect(page.locator('#current-state')).toHaveText('Fasting Window');
-    await expect(page.locator('#penalty-badge')).toBeVisible();
-    await expect(page.locator('#penalty-text')).toContainText('+2h penalty applied!');
+    const { windowStartTime } = await page.evaluate(() => ({ windowStartTime: appState.windowStartTime }));
+    expect(Math.abs(windowStartTime - Date.now())).toBeLessThan(10 * 1000);
 });
 
-test('Option 1: prolong eating fasting window is longer than standard 16h', async ({ page }) => {
+test('US-20 Option 1: prolonging creates a deferred Eating penalty, NOT a longer fasting window', async ({ page }) => {
     const now = Date.now();
+    // lastEatingWindowTargetMs was 1 hour ago → Eating penalty = 2 * 1h = 120m
     await setAppState(page, makeFastingState({
-        lastEatingWindowTargetMs: now - 60 * 60 * 1000,
+        lastEatingWindowTargetMs: now - HOUR,
     }));
     await page.goto('/');
 
     await page.click('#btn-toggle-break');
     await page.click('#btn-break-prolong');
 
-    const { windowEndTime, windowStartTime } = await page.evaluate(() => ({
+    const { windowEndTime, windowStartTime, eatingPenaltyMs, fastingPenaltyMs } = await page.evaluate(() => ({
         windowEndTime: appState.windowEndTime,
         windowStartTime: appState.windowStartTime,
+        eatingPenaltyMs: appState.eatingPenaltyMs,
+        fastingPenaltyMs: appState.fastingPenaltyMs,
     }));
 
-    // With 2h penalty, fasting duration = 16h + 2h = 18h
-    const fastDuration = windowEndTime - windowStartTime;
-    expect(fastDuration).toBeGreaterThan(DURATION_FASTING_MS + 115 * 60 * 1000);
-    expect(fastDuration).toBeLessThan(DURATION_FASTING_MS + 125 * 60 * 1000);
+    // Fasting window stays a standard 16h (the penalty no longer extends it)
+    expect(windowEndTime - windowStartTime).toBe(DURATION_FASTING_MS);
+    expect(fastingPenaltyMs).toBe(0);
+
+    // Eating penalty ≈ 2h, deferred to the next Eating window
+    expect(eatingPenaltyMs).toBeGreaterThan(2 * HOUR - 5 * MIN);
+    expect(eatingPenaltyMs).toBeLessThan(2 * HOUR + 5 * MIN);
+
+    // No penalty badge in the Fasting window; the deferred penalty is not a Fasting one
+    await expect(page.locator('#fasting-penalty-badge')).toBeHidden();
+    await expect(page.locator('#eating-penalty-badge')).toBeHidden();
+});
+
+test('US-20 Option 1: prolonging discards a banked Eating bonus', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeFastingState({
+        lastEatingWindowTargetMs: now - HOUR,
+        eatingBonusMs: 5 * HOUR,
+    }));
+    await page.goto('/');
+
+    await page.click('#btn-toggle-break');
+    await page.click('#btn-break-prolong');
+
+    const eatingBonusMs = await page.evaluate(() => appState.eatingBonusMs);
+    expect(eatingBonusMs).toBe(0);
+});
+
+test('US-20 Option 1: pending Fasting bonus still shortens the restarted fasting window', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeFastingState({
+        lastEatingWindowTargetMs: now - HOUR,
+        fastingBonusMs: 3 * HOUR,
+        appliedFastingBonusMs: 3 * HOUR,
+    }));
+    await page.goto('/');
+
+    await page.click('#btn-toggle-break');
+    await page.click('#btn-break-prolong');
+
+    const { windowEndTime, windowStartTime, fastingBonusMs } = await page.evaluate(() => ({
+        windowEndTime: appState.windowEndTime,
+        windowStartTime: appState.windowStartTime,
+        fastingBonusMs: appState.fastingBonusMs,
+    }));
+    expect(windowEndTime - windowStartTime).toBe(DURATION_FASTING_MS - 3 * HOUR);
+    expect(fastingBonusMs).toBe(3 * HOUR);
+    await expect(page.locator('#fasting-bonus-text')).toContainText('-3h fasting bonus applied!');
+});
+
+test('US-20 Option 1: a large Eating penalty cascade-skips Eating windows and eagerly extends the restarted fast', async ({ page }) => {
+    const now = Date.now();
+    // Overshoot 5h → Eating penalty 10h → one full 8h Eating window skipped (+16h Fasting), 2h remainder
+    await setAppState(page, makeFastingState({
+        lastEatingWindowTargetMs: now - 5 * HOUR,
+    }));
+    await page.goto('/');
+
+    await page.click('#btn-toggle-break');
+    await page.click('#btn-break-prolong');
+
+    const { windowEndTime, windowStartTime, eatingPenaltyMs } = await page.evaluate(() => ({
+        windowEndTime: appState.windowEndTime,
+        windowStartTime: appState.windowStartTime,
+        eatingPenaltyMs: appState.eatingPenaltyMs,
+    }));
+
+    expect(windowEndTime - windowStartTime).toBe(2 * DURATION_FASTING_MS);
+    expect(eatingPenaltyMs).toBeGreaterThan(2 * HOUR - 5 * MIN);
+    expect(eatingPenaltyMs).toBeLessThan(2 * HOUR + 5 * MIN);
 });
 
 test('Option 2: premature start transitions to eating window', async ({ page }) => {
     const now = Date.now();
     await setAppState(page, makeFastingState({
-        windowEndTime: now + 2 * 60 * 60 * 1000, // 2 hours remaining
+        windowEndTime: now + 2 * HOUR, // 2 hours remaining
     }));
     await page.goto('/');
 
@@ -91,9 +163,9 @@ test('Option 2: premature start transitions to eating window', async ({ page }) 
     await expect(page.locator('#break-fast-section')).toBeHidden();
 });
 
-test('Option 2: premature start carries penalty into next fasting window', async ({ page }) => {
+test('US-20 Option 2: premature start carries Fasting penalty into next fasting window', async ({ page }) => {
     const now = Date.now();
-    const remaining = 2 * 60 * 60 * 1000; // 2 hours remaining
+    const remaining = 2 * HOUR; // 2 hours remaining
     await setAppState(page, makeFastingState({
         windowEndTime: now + remaining,
     }));
@@ -102,13 +174,40 @@ test('Option 2: premature start carries penalty into next fasting window', async
     await page.click('#btn-toggle-break');
     await page.click('#btn-break-premature');
 
-    const { prematureStartPenaltyMs } = await page.evaluate(() => ({
-        prematureStartPenaltyMs: appState.prematureStartPenaltyMs,
+    const { fastingPenaltyMs, eatingPenaltyMs, windowStartTime, windowEndTime } = await page.evaluate(() => ({
+        fastingPenaltyMs: appState.fastingPenaltyMs,
+        eatingPenaltyMs: appState.eatingPenaltyMs,
+        windowStartTime: appState.windowStartTime,
+        windowEndTime: appState.windowEndTime,
     }));
 
     // Penalty = 2 * remaining time = 2 * 2h = 4h (in ms, ±5min tolerance)
-    expect(prematureStartPenaltyMs).toBeGreaterThan(2 * remaining - 5 * 60 * 1000);
-    expect(prematureStartPenaltyMs).toBeLessThan(2 * remaining + 5 * 60 * 1000);
+    expect(fastingPenaltyMs).toBeGreaterThan(2 * remaining - 5 * MIN);
+    expect(fastingPenaltyMs).toBeLessThan(2 * remaining + 5 * MIN);
+    // The new Eating window itself is a standard 8h (penalty is deferred), no Eating penalty
+    expect(windowEndTime - windowStartTime).toBe(DURATION_EATING_MS);
+    expect(eatingPenaltyMs).toBe(0);
+});
+
+test('US-20 Option 2: premature start clears a pending Eating penalty and Fasting bonus', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeFastingState({
+        windowEndTime: now + 2 * HOUR,
+        eatingPenaltyMs: HOUR,
+        fastingBonusMs: HOUR,
+        appliedFastingBonusMs: HOUR,
+    }));
+    await page.goto('/');
+
+    await page.click('#btn-toggle-break');
+    await page.click('#btn-break-premature');
+
+    const { eatingPenaltyMs, fastingBonusMs } = await page.evaluate(() => ({
+        eatingPenaltyMs: appState.eatingPenaltyMs,
+        fastingBonusMs: appState.fastingBonusMs,
+    }));
+    expect(eatingPenaltyMs).toBe(0);
+    expect(fastingBonusMs).toBe(0);
 });
 
 // US-15: retrospective logs that land inside an active Fasting window
@@ -127,12 +226,12 @@ async function submitRetroLog(page, mealType, timeValue) {
 
 test('US-15: retrospective last meal inside active fast applies Option 1 penalty at the retro time', async ({ page }) => {
     const now = Date.now();
-    const retroTime = new Date(now - 30 * 60 * 1000); // 30 min ago
-    const lastEatingWindowTargetMs = now - 90 * 60 * 1000; // eating target was 90 min ago
+    const retroTime = new Date(now - 30 * MIN); // 30 min ago
+    const lastEatingWindowTargetMs = now - 90 * MIN; // eating target was 90 min ago
 
     await setAppState(page, makeFastingState({
-        windowStartTime: now - 60 * 60 * 1000, // fast started 1h ago
-        windowEndTime: now + 15 * 60 * 60 * 1000,
+        windowStartTime: now - HOUR, // fast started 1h ago
+        windowEndTime: now + 15 * HOUR,
         lastEatingWindowTargetMs,
     }));
     await page.goto('/');
@@ -141,27 +240,27 @@ test('US-15: retrospective last meal inside active fast applies Option 1 penalty
 
     await expect(page.locator('#current-state')).toHaveText('Fasting Window');
 
-    const { windowStartTime, prolongingPenaltyMs } = await page.evaluate(() => ({
+    const { windowStartTime, eatingPenaltyMs } = await page.evaluate(() => ({
         windowStartTime: appState.windowStartTime,
-        prolongingPenaltyMs: appState.prolongingPenaltyMs,
+        eatingPenaltyMs: appState.eatingPenaltyMs,
     }));
 
     // windowStartTime reflects the retro time, not real now
     expect(Math.abs(windowStartTime - retroTime.getTime())).toBeLessThan(60 * 1000);
 
-    // Penalty = 2 * (retroTime - lastEatingWindowTargetMs) ≈ 2 * 60min = 120min
+    // US-20: Eating penalty = 2 * (retroTime - lastEatingWindowTargetMs) ≈ 2 * 60min = 120min
     const expectedPenalty = 2 * (retroTime.getTime() - lastEatingWindowTargetMs);
-    expect(prolongingPenaltyMs).toBeGreaterThan(expectedPenalty - 5 * 60 * 1000);
-    expect(prolongingPenaltyMs).toBeLessThan(expectedPenalty + 5 * 60 * 1000);
+    expect(eatingPenaltyMs).toBeGreaterThan(expectedPenalty - 5 * MIN);
+    expect(eatingPenaltyMs).toBeLessThan(expectedPenalty + 5 * MIN);
 });
 
 test('US-15: retrospective first meal inside active fast applies Option 2 penalty at the retro time', async ({ page }) => {
     const now = Date.now();
-    const retroTime = new Date(now - 30 * 60 * 1000); // 30 min ago
-    const windowEndTime = now + 2 * 60 * 60 * 1000; // 2h remaining from real now
+    const retroTime = new Date(now - 30 * MIN); // 30 min ago
+    const windowEndTime = now + 2 * HOUR; // 2h remaining from real now
 
     await setAppState(page, makeFastingState({
-        windowStartTime: now - 60 * 60 * 1000, // fast started 1h ago
+        windowStartTime: now - HOUR, // fast started 1h ago
         windowEndTime,
     }));
     await page.goto('/');
@@ -171,15 +270,15 @@ test('US-15: retrospective first meal inside active fast applies Option 2 penalt
     await expect(page.locator('#current-state')).toHaveText('Eating Window');
     await expect(page.locator('#break-fast-section')).toBeHidden();
 
-    const { prematureStartPenaltyMs, history } = await page.evaluate(() => ({
-        prematureStartPenaltyMs: appState.prematureStartPenaltyMs,
+    const { fastingPenaltyMs, history } = await page.evaluate(() => ({
+        fastingPenaltyMs: appState.fastingPenaltyMs,
         history: appState.history,
     }));
 
     // Penalty = 2 * (windowEndTime - retroTime) ≈ 2 * 2.5h
     const expectedPenalty = 2 * (windowEndTime - retroTime.getTime());
-    expect(prematureStartPenaltyMs).toBeGreaterThan(expectedPenalty - 5 * 60 * 1000);
-    expect(prematureStartPenaltyMs).toBeLessThan(expectedPenalty + 5 * 60 * 1000);
+    expect(fastingPenaltyMs).toBeGreaterThan(expectedPenalty - 5 * MIN);
+    expect(fastingPenaltyMs).toBeLessThan(expectedPenalty + 5 * MIN);
 
     // The interrupted fast was recorded to history
     expect(history.length).toBe(1);
@@ -189,38 +288,38 @@ test('US-15: retrospective first meal inside active fast applies Option 2 penalt
 test('US-15: retrospective entry outside active fast window keeps existing US-B5 behavior', async ({ page }) => {
     const now = Date.now();
     // Entry is before the fast even started — outside the active window.
-    const retroTime = new Date(now - 3 * 60 * 60 * 1000); // 3h ago
+    const retroTime = new Date(now - 3 * HOUR); // 3h ago
 
     await setAppState(page, makeFastingState({
-        windowStartTime: now - 60 * 60 * 1000, // fast started 1h ago
-        windowEndTime: now + 15 * 60 * 60 * 1000,
-        lastEatingWindowTargetMs: now - 90 * 60 * 1000,
+        windowStartTime: now - HOUR, // fast started 1h ago
+        windowEndTime: now + 15 * HOUR,
+        lastEatingWindowTargetMs: now - 90 * MIN,
     }));
     await page.goto('/');
 
     await submitRetroLog(page, 'last', toHHMM(retroTime));
 
     // logLastMeal (unchanged US-B5 path) does not touch US-7 penalty fields.
-    const { prolongingPenaltyMs, prematureStartPenaltyMs } = await page.evaluate(() => ({
-        prolongingPenaltyMs: appState.prolongingPenaltyMs,
-        prematureStartPenaltyMs: appState.prematureStartPenaltyMs,
+    const { eatingPenaltyMs, fastingPenaltyMs } = await page.evaluate(() => ({
+        eatingPenaltyMs: appState.eatingPenaltyMs,
+        fastingPenaltyMs: appState.fastingPenaltyMs,
     }));
 
-    expect(prolongingPenaltyMs).toBe(0);
-    expect(prematureStartPenaltyMs).toBe(0);
+    expect(eatingPenaltyMs).toBe(0);
+    expect(fastingPenaltyMs).toBe(0);
 });
 
 test('US-15: retrospective entry exactly on the fast window boundaries counts as inside', async ({ page }) => {
     // parseRetrospectiveTime only has minute granularity (HH:MM input), so the
     // boundary must be minute-aligned for the retro time to equal it exactly.
     const nowAligned = Math.floor(Date.now() / 60000) * 60000;
-    const windowStartTime = nowAligned - 60 * 60 * 1000; // fast started 1h ago
-    const lastEatingWindowTargetMs = nowAligned - 90 * 60 * 1000;
+    const windowStartTime = nowAligned - HOUR; // fast started 1h ago
+    const lastEatingWindowTargetMs = nowAligned - 90 * MIN;
     const retroTime = new Date(windowStartTime); // exactly at windowStartTime
 
     await setAppState(page, makeFastingState({
         windowStartTime,
-        windowEndTime: nowAligned + 15 * 60 * 60 * 1000,
+        windowEndTime: nowAligned + 15 * HOUR,
         lastEatingWindowTargetMs,
     }));
     await page.goto('/');
@@ -229,36 +328,47 @@ test('US-15: retrospective entry exactly on the fast window boundaries counts as
 
     // Landing exactly on windowStartTime still counts as "inside" → Option 1 applies.
     await expect(page.locator('#current-state')).toHaveText('Fasting Window');
-    const { prolongingPenaltyMs } = await page.evaluate(() => ({
-        prolongingPenaltyMs: appState.prolongingPenaltyMs,
+    const { eatingPenaltyMs } = await page.evaluate(() => ({
+        eatingPenaltyMs: appState.eatingPenaltyMs,
     }));
-    expect(prolongingPenaltyMs).toBeGreaterThan(0);
+    expect(eatingPenaltyMs).toBeGreaterThan(0);
 });
 
 // --- US-19: hours+minutes formatting once a penalty amount reaches 60 minutes ---
 
-test('US-19: applied penalty badge shows hours+minutes for a non-exact-hour amount', async ({ page }) => {
+test('US-19: Fasting penalty badge shows hours+minutes for a non-exact-hour amount', async ({ page }) => {
     const now = Date.now();
-    // lastEatingWindowTargetMs was 45 min ago → penalty = 2 * 45m = 90m = 1h 30m
     await setAppState(page, makeFastingState({
-        lastEatingWindowTargetMs: now - 45 * 60 * 1000,
+        windowEndTime: now + DURATION_FASTING_MS + 90 * MIN,
+        fastingPenaltyMs: 90 * MIN,
+        appliedFastingPenaltyMs: 90 * MIN,
     }));
     await page.goto('/');
 
-    await page.click('#btn-toggle-break');
-    await page.click('#btn-break-prolong');
+    await expect(page.locator('#fasting-penalty-badge')).toBeVisible();
+    await expect(page.locator('#fasting-penalty-text')).toContainText('+1h 30m penalty applied!');
+});
 
-    await expect(page.locator('#penalty-text')).toContainText('+1h 30m penalty applied!');
+test('US-19: Eating penalty badge shows hours+minutes for a non-exact-hour amount', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, makeEatingState({
+        windowEndTime: now + DURATION_EATING_MS - 90 * MIN,
+        appliedEatingPenaltyMs: 90 * MIN,
+    }));
+    await page.goto('/');
+
+    await expect(page.locator('#eating-penalty-badge')).toBeVisible();
+    await expect(page.locator('#eating-penalty-text')).toContainText('-1h 30m penalty applied!');
 });
 
 test('US-19: break-fast prolong/premature penalty predictions switch to hours+minutes at 60 or more', async ({ page }) => {
     const now = Date.now();
     await setAppState(page, makeFastingState({
         // prolong prediction = 2 * 45m = 90m = 1h 30m
-        lastEatingWindowTargetMs: now - 45 * 60 * 1000,
+        lastEatingWindowTargetMs: now - 45 * MIN,
         // premature prediction = 2 * 31m ≈ 62m, comfortably above the 60m boundary
         // despite the real time that elapses between "now" and the assertion below
-        windowEndTime: now + 31 * 60 * 1000,
+        windowEndTime: now + 31 * MIN,
     }));
     await page.goto('/');
 

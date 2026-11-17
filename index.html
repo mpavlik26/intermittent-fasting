@@ -28,7 +28,8 @@
                 <div class="current-time-container">
                     <span id="current-time">00:00:00</span>
                 </div>
-                <span id="stored-bonus-indicator" class="stored-bonus-indicator hidden">+0m stored</span>
+                <span id="stored-fasting-bonus-indicator" class="stored-bonus-indicator hidden">+0m stored</span>
+                <span id="stored-eating-bonus-indicator" class="stored-bonus-indicator hidden">+0m stored</span>
             </div>
         </header>
 
@@ -38,10 +39,6 @@
                     <div class="glow-ring"></div>
                     <div class="status-text-container">
                         <h2 id="current-state" class="state-title">Potential Eating Window</h2>
-                        <div id="bonus-badge" class="bonus-badge hidden">
-                            <span class="bonus-icon">✨</span>
-                            <span id="bonus-text">+0m bonus</span>
-                        </div>
                         <p class="state-description" id="state-description">You can start your eating window when you
                             are ready.</p>
                     </div>
@@ -71,24 +68,44 @@
                 </div>
 
                 <div class="badges-container">
-                    <div id="bonus-badge" class="badge bonus-badge hidden">
+                    <div id="fasting-bonus-badge" class="badge bonus-badge hidden">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 16 12 12 12 8"></polyline>
                             <line x1="12" y1="12" x2="16" y2="12"></line>
                         </svg>
-                        <span id="bonus-text"></span>
+                        <span id="fasting-bonus-text"></span>
                     </div>
 
-                    <div id="penalty-badge" class="badge penalty-badge hidden">
+                    <div id="eating-bonus-badge" class="badge bonus-badge hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 16 12 12 12 8"></polyline>
+                            <line x1="12" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                        <span id="eating-bonus-text"></span>
+                    </div>
+
+                    <div id="fasting-penalty-badge" class="badge penalty-badge hidden">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
                             <path d="M12 9v4"></path>
                             <path d="M12 17h.01"></path>
                         </svg>
-                        <span id="penalty-text"></span>
+                        <span id="fasting-penalty-text"></span>
+                    </div>
+
+                    <div id="eating-penalty-badge" class="badge penalty-badge hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                            <path d="M12 9v4"></path>
+                            <path d="M12 17h.01"></path>
+                        </svg>
+                        <span id="eating-penalty-text"></span>
                     </div>
                 </div>
 
@@ -274,6 +291,7 @@
                     <span id="sim-fast-end" class="time-highlight">--:--</span>
                 </div>
                 <div class="sim-output-duration">Duration: <strong id="sim-fast-duration">--</strong></div>
+                <div id="sim-next-fast-shortened" class="sim-output-duration hidden">Next Fasting window shortened by <strong id="sim-next-fast-shortened-val">--</strong></div>
             </div>
         </div>
     </div>
@@ -352,15 +370,15 @@
         </div>
     </template>
 
-    <script src="js/state.js?v=2"></script>
+    <script src="js/state.js?v=4"></script>
     <script src="js/time-utils.js?v=2"></script>
-    <script src="js/history.js?v=2"></script>
-    <script src="js/transitions.js?v=1"></script>
-    <script src="js/simulator.js?v=1"></script>
-    <script src="js/bonus-storage.js?v=3"></script>
-    <script src="js/ui.js?v=3"></script>
-    <script src="js/manual-session.js?v=1"></script>
-    <script src="js/main.js?v=2"></script>
+    <script src="js/history.js?v=3"></script>
+    <script src="js/transitions.js?v=3"></script>
+    <script src="js/simulator.js?v=2"></script>
+    <script src="js/bonus-storage.js?v=4"></script>
+    <script src="js/ui.js?v=5"></script>
+    <script src="js/manual-session.js?v=2"></script>
+    <script src="js/main.js?v=3"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

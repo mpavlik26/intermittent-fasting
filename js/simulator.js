@@ -67,38 +67,53 @@ function closeSimulator() {
     elSimOverlay.classList.add('hidden');
 }
 
+// US-20: In Potential Eating, a late first meal earns a Fasting bonus (1:1). Every full 16h of it
+// cascade-skips a whole Fasting/Eating pair, extending the modeled Eating window by 8h; only the
+// remainder is left to shorten the following fast.
+function getModeledFirstMealEffects(firstMealMs) {
+    const delayMs = appState.windowEndTime && firstMealMs > appState.windowEndTime
+        ? firstMealMs - appState.windowEndTime
+        : 0;
+    const { skips, remainderMs } = cascadeSkip(delayMs, DURATION_FASTING_MS);
+    return {
+        eatingEndMs: firstMealMs + DURATION_EATING_MS + skips * DURATION_EATING_MS,
+        fastingBonusMs: delayMs > 0 ? remainderMs : appState.fastingBonusMs,
+    };
+}
+
 function calcSimulatedFast(firstMealMs, lastMealMs) {
     let effectiveEatingEnd;
+    let fastingBonusMs;
 
     if (appState.currentState === STATES.POTENTIAL_EATING) {
-        let fastingBonus = 0;
-        if (appState.windowEndTime && firstMealMs > appState.windowEndTime) {
-            fastingBonus = Math.floor((firstMealMs - appState.windowEndTime) / BONUS_DIVISOR);
-        }
-        effectiveEatingEnd = firstMealMs + DURATION_EATING_MS + fastingBonus;
+        const effects = getModeledFirstMealEffects(firstMealMs);
+        effectiveEatingEnd = effects.eatingEndMs;
+        fastingBonusMs = effects.fastingBonusMs;
     } else {
         effectiveEatingEnd = appState.windowEndTime;
+        fastingBonusMs = appState.fastingBonusMs;
     }
 
-    const eatingBonus = lastMealMs < effectiveEatingEnd
-        ? Math.floor((effectiveEatingEnd - lastMealMs) / BONUS_DIVISOR)
+    // US-20: finishing eating early banks an Eating bonus for the NEXT eating window —
+    // it no longer shortens this fast. Only the Fasting bonus/penalty pool does.
+    const eatingBonusBankedMs = lastMealMs < effectiveEatingEnd
+        ? effectiveEatingEnd - lastMealMs
         : 0;
 
     const fastStart = lastMealMs;
-    const fastEnd = lastMealMs + DURATION_FASTING_MS - eatingBonus + appState.prematureStartPenaltyMs;
-    return { fastStart, fastEnd, fastDurationMs: fastEnd - fastStart };
+    const fastEnd = lastMealMs + DURATION_FASTING_MS - fastingBonusMs + appState.fastingPenaltyMs;
+    return { fastStart, fastEnd, fastDurationMs: fastEnd - fastStart, eatingBonusBankedMs };
 }
 
 // US-13: Calculate the modeled eating window when in Fasting state.
 // firstMealMs = when user plans to eat after fasting ends (sliderStartMs = fasting window end).
+// US-20: delaying the first meal earns a Fasting bonus that shortens the *next* Fasting
+// window, not this modeled Eating window — exposed separately as nextFastShortenedByMs.
 function calcSimulatedEating(firstMealMs) {
-    let fastingBonus = 0;
-    if (firstMealMs > simState.sliderStartMs) {
-        fastingBonus = Math.floor((firstMealMs - simState.sliderStartMs) / BONUS_DIVISOR);
-    }
+    const nextFastShortenedByMs = Math.max(0, firstMealMs - simState.sliderStartMs);
     const eatStart = firstMealMs;
-    const eatEnd = firstMealMs + DURATION_EATING_MS + fastingBonus;
-    return { eatStart, eatEnd, eatDurationMs: eatEnd - eatStart };
+    const eatEnd = firstMealMs + DURATION_EATING_MS;
+    return { eatStart, eatEnd, eatDurationMs: eatEnd - eatStart, nextFastShortenedByMs };
 }
 
 function updateSimulatorOutput() {
@@ -118,28 +133,31 @@ function updateSimulatorOutput() {
     elSimRangeFill.style.right = `${fillRight}%`;
 
     if (appState.currentState === STATES.FASTING) {
-        const { eatStart, eatEnd, eatDurationMs } = calcSimulatedEating(firstMealMs);
+        const { eatStart, eatEnd, eatDurationMs, nextFastShortenedByMs } = calcSimulatedEating(firstMealMs);
         elSimFastStart.innerHTML = renderTime(eatStart);
         elSimFastEnd.innerHTML = renderTime(eatEnd);
         elSimFastDuration.textContent = formatSimDuration(eatDurationMs);
+        if (nextFastShortenedByMs > 0) {
+            elSimNextFastShortenedVal.textContent = formatSimDuration(nextFastShortenedByMs);
+            elSimNextFastShortened.classList.remove('hidden');
+        } else {
+            elSimNextFastShortened.classList.add('hidden');
+        }
     } else {
         const { fastStart, fastEnd, fastDurationMs } = calcSimulatedFast(firstMealMs, lastMealMs);
         elSimFastStart.innerHTML = renderTime(fastStart);
         elSimFastEnd.innerHTML = renderTime(fastEnd);
         elSimFastDuration.textContent = formatSimDuration(fastDurationMs);
+        elSimNextFastShortened.classList.add('hidden');
     }
 }
 
 // Returns the maximum allowed position (in minutes) for toggle2 in potential state.
-// toggle2 cannot go past firstMeal + eating window length (8h + US-3 fasting bonus).
+// toggle2 cannot go past firstMeal + eating window length (8h, plus 8h per cascade-skipped 16h of Fasting bonus).
 function getMaxLastMealMins() {
     const firstMins = parseInt(elSliderFirstMeal.value);
     const firstMealMs = simState.sliderStartMs + firstMins * 60000;
-    let fastingBonus = 0;
-    if (appState.windowEndTime && firstMealMs > appState.windowEndTime) {
-        fastingBonus = Math.floor((firstMealMs - appState.windowEndTime) / BONUS_DIVISOR);
-    }
-    const maxLastMealMs = firstMealMs + DURATION_EATING_MS + fastingBonus;
+    const maxLastMealMs = getModeledFirstMealEffects(firstMealMs).eatingEndMs;
     return Math.min(
         Math.floor((maxLastMealMs - simState.sliderStartMs) / 60000),
         parseInt(elSliderLastMeal.max)

@@ -67,8 +67,8 @@ test('eating: standard 16h fast when last meal is at eating window end', async (
     expect(result.fastDurationMs).toBe(DURATION_FASTING_MS);
 });
 
-test('eating: US-4 bonus shortens fast when last meal is early', async ({ page }) => {
-    // last meal 2h before eating window end → eatingBonus = 1h → fast = 15h
+test('eating: US-20 early last meal banks an Eating bonus but does NOT shorten the modeled fast', async ({ page }) => {
+    // last meal 2h before eating window end → 2h Eating bonus banked (for the next eating window)
     const now = Date.now();
     const windowStartTime = now - 4 * 60 * 60 * 1000;
     const windowEndTime = windowStartTime + DURATION_EATING_MS;
@@ -78,10 +78,29 @@ test('eating: US-4 bonus shortens fast when last meal is early', async ({ page }
 
     // 480 - 120 = 360 min (2h before window end)
     const result = await calcFast(page, 0, 360);
-    expect(result.fastDurationMs).toBe(DURATION_FASTING_MS - 60 * 60 * 1000);
+    expect(result.fastDurationMs).toBe(DURATION_FASTING_MS);
+    expect(result.eatingBonusBankedMs).toBe(2 * 60 * 60 * 1000);
 });
 
-test('eating: premature start penalty is included in modeled fast duration', async ({ page }) => {
+test('eating: US-20 Fasting bonus carried into the fast shortens it 1:1', async ({ page }) => {
+    const now = Date.now();
+    const bonusMs = 90 * 60 * 1000;
+    const windowStartTime = now - 4 * 60 * 60 * 1000;
+    const windowEndTime = windowStartTime + DURATION_EATING_MS;
+    await setAppState(page, makeEatingState({
+        windowStartTime,
+        windowEndTime,
+        lastEatingWindowTargetMs: windowEndTime,
+        fastingBonusMs: bonusMs,
+    }));
+    await page.goto('/');
+    await openSimulator(page);
+
+    const result = await calcFast(page, 0, 480);
+    expect(result.fastDurationMs).toBe(DURATION_FASTING_MS - bonusMs);
+});
+
+test('eating: Fasting penalty is included in modeled fast duration', async ({ page }) => {
     const now = Date.now();
     const penaltyMs = 4 * 60 * 60 * 1000; // 4h penalty
     const windowStartTime = now - 4 * 60 * 60 * 1000;
@@ -90,12 +109,12 @@ test('eating: premature start penalty is included in modeled fast duration', asy
         windowStartTime,
         windowEndTime,
         lastEatingWindowTargetMs: windowEndTime,
-        prematureStartPenaltyMs: penaltyMs,
+        fastingPenaltyMs: penaltyMs,
     }));
     await page.goto('/');
     await openSimulator(page);
 
-    // last meal at eating end → eatingBonus = 0; penalty adds 4h
+    // Fasting penalty adds 4h to the fast
     const result = await calcFast(page, 0, 480);
     expect(result.fastDurationMs).toBe(DURATION_FASTING_MS + penaltyMs);
 });

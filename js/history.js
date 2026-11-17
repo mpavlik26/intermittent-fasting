@@ -1,14 +1,15 @@
 // --- History Helpers ---
 
-function addToHistory(type, startTime, endTime, bonusMs = 0, penaltyMs = 0) {
+function addToHistory(type, startTime, endTime, amounts = {}) {
     if (!startTime || !endTime) return;
 
+    const isEating = type === STATES.EATING;
     const record = {
         type,
         startTime,
         endTime,
-        bonusMs,
-        penaltyMs,
+        bonusMs: isEating ? (amounts.eatingBonusMs || 0) : (amounts.fastingBonusMs || 0),
+        penaltyMs: isEating ? (amounts.eatingPenaltyMs || 0) : (amounts.fastingPenaltyMs || 0),
         isManual: appState.isManualSession, // US-11
         id: Date.now()
     };
