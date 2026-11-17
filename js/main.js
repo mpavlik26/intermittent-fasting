@@ -130,7 +130,7 @@ function setupEventListeners() {
     }
     if (elEatingBonusBadge) {
         elEatingBonusBadge.addEventListener('click', () => {
-            if (appState.currentState === STATES.EATING && appState.eatingBonusMs > 0 && canOpenAmountPicker('store', 'eating')) {
+            if (appState.currentState === STATES.FASTING && appState.eatingBonusMs > 0 && canOpenAmountPicker('store', 'eating')) {
                 openAmountPicker('store', 'eating');
             }
         });

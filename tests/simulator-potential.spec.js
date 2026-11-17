@@ -74,10 +74,11 @@ test('potential: standard 16h fast when no bonuses apply', async ({ page }) => {
     expect(result.fastDurationMs).toBe(DURATION_FASTING_MS);
 });
 
-test('potential: US-3 fasting bonus extends eating window when first meal is late', async ({ page }) => {
+test('potential: US-20 a late first meal shortens the modeled fast 1:1 (eating window stays 8h)', async ({ page }) => {
     // windowEndTime = now - 2h → sliderStart = now - 2h
-    // first meal = now → offset 120 min → fastingBonus = 1h
-    // effectiveEatingEnd = now + 9h → last meal there → offset 660 min → eatingBonus = 0
+    // first meal = now → offset 120 min → Fasting bonus = 2h
+    // eating end = now + 8h → last meal there → offset 600 min → no Eating bonus
+    // fast = 16h - 2h = 14h
     const now = Date.now();
     await setAppState(page, makePotentialState({
         windowStartTime: now - DURATION_FASTING_MS - 2 * 60 * 60 * 1000,
@@ -86,27 +87,29 @@ test('potential: US-3 fasting bonus extends eating window when first meal is lat
     await page.goto('/');
     await openSimulator(page);
 
-    const result = await calcFast(page, 120, 660);
-    expect(result.fastDurationMs).toBe(DURATION_FASTING_MS);
+    const result = await calcFast(page, 120, 600);
+    expect(result.fastDurationMs).toBe(DURATION_FASTING_MS - 2 * 60 * 60 * 1000);
+    expect(result.eatingBonusBankedMs).toBe(0);
 });
 
-test('potential: US-4 eating bonus shortens fast when last meal is early', async ({ page }) => {
+test('potential: US-20 early last meal banks an Eating bonus, does NOT shorten the fast', async ({ page }) => {
     // sliderStart = windowEndTime = now
-    // first meal = now → offset 0 → fastingBonus = 0 → effectiveEatingEnd = now + 8h
-    // last meal 2h before eating end → offset 360 min → eatingBonus = 1h → fast = 15h
+    // first meal = now → offset 0 → no Fasting bonus → eating end = now + 8h
+    // last meal 2h before eating end → offset 360 min → 2h Eating bonus banked; fast stays 16h
     await setAppState(page, makePotentialState());
     await page.goto('/');
     await openSimulator(page);
 
     const result = await calcFast(page, 0, 360);
-    expect(result.fastDurationMs).toBe(DURATION_FASTING_MS - 60 * 60 * 1000);
+    expect(result.fastDurationMs).toBe(DURATION_FASTING_MS);
+    expect(result.eatingBonusBankedMs).toBe(2 * 60 * 60 * 1000);
 });
 
-test('potential: combined US-3 + US-4 bonuses', async ({ page }) => {
+test('potential: US-20 Fasting bonus and Eating bonus are independent', async ({ page }) => {
     // windowEndTime = now - 2h → sliderStart = now - 2h
-    // first meal = now → offset 120 → fastingBonus = 1h → effectiveEatingEnd = now + 9h
-    // last meal 2h before effectiveEatingEnd (now + 7h) → offset 540 → eatingBonus = 1h
-    // fast = 16h - 1h = 15h
+    // first meal = now → offset 120 → Fasting bonus 2h → eating end = now + 8h
+    // last meal at now + 6h → offset 480 → Eating bonus 2h banked
+    // fast = 16h - 2h (Fasting bonus only) = 14h
     const now = Date.now();
     await setAppState(page, makePotentialState({
         windowStartTime: now - DURATION_FASTING_MS - 2 * 60 * 60 * 1000,
@@ -115,8 +118,30 @@ test('potential: combined US-3 + US-4 bonuses', async ({ page }) => {
     await page.goto('/');
     await openSimulator(page);
 
-    const result = await calcFast(page, 120, 540);
-    expect(result.fastDurationMs).toBe(DURATION_FASTING_MS - 60 * 60 * 1000);
+    const result = await calcFast(page, 120, 480);
+    expect(result.fastDurationMs).toBe(DURATION_FASTING_MS - 2 * 60 * 60 * 1000);
+    expect(result.eatingBonusBankedMs).toBe(2 * 60 * 60 * 1000);
+});
+
+test('potential: US-20 Fasting bonus > 16h cascade-skips: eating end +8h, remainder shortens the fast', async ({ page }) => {
+    // windowEndTime = now - 20h → first meal = now → 20h Fasting bonus = 1 skip + 4h remainder
+    // eating end = now + 16h; fast = 16h - 4h = 12h
+    const now = Date.now();
+    await setAppState(page, makePotentialState({
+        windowStartTime: now - DURATION_FASTING_MS - 20 * 60 * 60 * 1000,
+        windowEndTime: now - 20 * 60 * 60 * 1000,
+    }));
+    await page.goto('/');
+    await openSimulator(page);
+
+    // first meal = now (offset 1200), last meal = first + 16h — call the calculation directly
+    const result = await page.evaluate(() => {
+        const first = simState.sliderStartMs + 1200 * 60000;
+        const last = first + 16 * 60 * 60000;
+        return calcSimulatedFast(first, last);
+    });
+    expect(result.fastDurationMs).toBe(DURATION_FASTING_MS - 4 * 60 * 60 * 1000);
+    expect(result.eatingBonusBankedMs).toBe(0);
 });
 
 // --- Slider Constraint ---
@@ -141,8 +166,8 @@ test('potential: toggle 2 clamped at first + 8h when no US-3 bonus', async ({ pa
 
 test('potential: toggle 2 clamped down when toggle 1 moves left reducing the max', async ({ page }) => {
     // windowEndTime = now - 4h → sliderStart = now - 4h
-    // toggle1=240 → firstMeal=now → fastingBonus=2h → maxLast = 240+480+120 = 840
-    // Set toggle2 to 840, then move toggle1 to 0 → fastingBonus=0 → maxLast=480 → toggle2 clamps
+    // US-20: no divisor / no extension → maxLast = toggle1 + 480
+    // toggle1=240 → maxLast = 720. Set toggle2 to 720, then move toggle1 to 0 → maxLast=480 → toggle2 clamps
     const now = Date.now();
     await setAppState(page, makePotentialState({
         windowStartTime: now - DURATION_FASTING_MS - 4 * 60 * 60 * 1000,
@@ -154,9 +179,9 @@ test('potential: toggle 2 clamped down when toggle 1 moves left reducing the max
     await page.evaluate(() => {
         document.getElementById('slider-first-meal').value = 240;
         document.getElementById('slider-first-meal').dispatchEvent(new Event('input'));
-        document.getElementById('slider-last-meal').value = 840;
+        document.getElementById('slider-last-meal').value = 720;
         document.getElementById('slider-last-meal').dispatchEvent(new Event('input'));
-        // Move toggle1 back to 0: fastingBonus drops to 0, maxLast shrinks to 480
+        // Move toggle1 back to 0: maxLast shrinks to 480
         document.getElementById('slider-first-meal').value = 0;
         document.getElementById('slider-first-meal').dispatchEvent(new Event('input'));
     });
@@ -165,10 +190,10 @@ test('potential: toggle 2 clamped down when toggle 1 moves left reducing the max
     expect(lastVal).toBe(480);
 });
 
-test('potential: US-3 bonus extends the toggle 2 upper bound', async ({ page }) => {
+test('potential: US-20 a sub-16h Fasting bonus does NOT extend the toggle 2 upper bound', async ({ page }) => {
     // windowEndTime = now - 2h → sliderStart = now - 2h
-    // toggle1 at 120 min = now → firstMeal 2h after windowEndTime → fastingBonus = 1h
-    // maxLast = 120 + 540 = 660 min; trying 680 should clamp to 660
+    // toggle1 at 120 min = now → 2h Fasting bonus (shortens the fast, not the eating window)
+    // maxLast = 120 + 480 = 600 min; trying 680 should clamp to 600
     const now = Date.now();
     await setAppState(page, makePotentialState({
         windowStartTime: now - DURATION_FASTING_MS - 2 * 60 * 60 * 1000,
@@ -180,12 +205,12 @@ test('potential: US-3 bonus extends the toggle 2 upper bound', async ({ page }) 
     await page.evaluate(() => {
         document.getElementById('slider-first-meal').value = 120;
         document.getElementById('slider-first-meal').dispatchEvent(new Event('input'));
-        document.getElementById('slider-last-meal').value = 680; // past the 660 max
+        document.getElementById('slider-last-meal').value = 680; // past the 600 max
         document.getElementById('slider-last-meal').dispatchEvent(new Event('input'));
     });
 
     const lastVal = await page.evaluate(() => parseInt(document.getElementById('slider-last-meal').value));
-    expect(lastVal).toBe(660);
+    expect(lastVal).toBe(600);
 });
 
 test('toggle 2 is clamped to toggle 1 when moved before it', async ({ page }) => {

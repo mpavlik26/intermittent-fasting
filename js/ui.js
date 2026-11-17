@@ -192,16 +192,16 @@ function updateUI() {
         let desc = "You have 8 hours to consume your daily meals.";
 
         // US-4/US-20 UI Feedback: Eating bonus extends THIS Eating window
-        if (appState.eatingBonusMs > 0) {
-            const bonusMins = Math.floor(appState.eatingBonusMs / (60 * 1000));
+        // (eatingBonusMs itself is already consumed/reset on entry, so the amount applied to
+        // this window lives in appliedEatingBonusMs; it is informational, not storable.)
+        elEatingBonusBadge.classList.remove('storable');
+        if (appState.appliedEatingBonusMs > 0) {
+            const bonusMins = Math.floor(appState.appliedEatingBonusMs / (60 * 1000));
             elEatingBonusText.textContent = `+${formatMinutesBadge(bonusMins)} eating bonus applied!`;
             elEatingBonusBadge.classList.remove('hidden');
-            // US-18.1: only storable while there's still a safe (non-past-pushing) amount to move
-            elEatingBonusBadge.classList.toggle('storable', canOpenAmountPicker('store', 'eating'));
             desc = `You earned a ${formatMinutesBadge(bonusMins)} bonus for finishing eating early! Total window: ${formatMinutesBadge(480 + bonusMins)}.`;
         } else {
             elEatingBonusBadge.classList.add('hidden');
-            elEatingBonusBadge.classList.remove('storable');
         }
 
         // US-20 Penalty Badge: Eating penalty shortened THIS Eating window
@@ -263,6 +263,18 @@ function updateUI() {
         } else {
             elFastingBonusBadge.classList.add('hidden');
             elFastingBonusBadge.classList.remove('storable');
+        }
+
+        // US-20: Eating bonus banked by finishing early, waiting for the next Eating window.
+        // Storable (US-18) — this is where "Move Eating Bonus to Storage" is reachable.
+        if (appState.eatingBonusMs > 0) {
+            const bonusMins = Math.floor(appState.eatingBonusMs / (60 * 1000));
+            elEatingBonusText.textContent = `+${formatMinutesBadge(bonusMins)} eating bonus banked!`;
+            elEatingBonusBadge.classList.remove('hidden');
+            elEatingBonusBadge.classList.toggle('storable', canOpenAmountPicker('store', 'eating'));
+        } else {
+            elEatingBonusBadge.classList.add('hidden');
+            elEatingBonusBadge.classList.remove('storable');
         }
 
         // US-8/US-20 Penalty Badge: Fasting penalty extended THIS Fasting window

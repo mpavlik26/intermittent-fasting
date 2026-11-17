@@ -81,10 +81,10 @@ test('fasting: moving toggle 1 → toggle 2 follows to eating window end (no bon
     });
 
     const lastVal = await page.evaluate(() => parseInt(document.getElementById('slider-last-meal').value));
-    expect(lastVal).toBe(480); // 0 + 480 + floor(0/2) = 480
+    expect(lastVal).toBe(480); // 0 + 480 = 480
 });
 
-test('fasting: moving toggle 1 → toggle 2 extends with US-3 bonus (120min delay → 60min bonus)', async ({ page }) => {
+test('fasting: US-20 moving toggle 1 → toggle 2 follows 1:1 (a delay does not extend the eating window)', async ({ page }) => {
     await setAppState(page, makeFastingState());
     await page.goto('/');
     await openSimulator(page);
@@ -95,7 +95,7 @@ test('fasting: moving toggle 1 → toggle 2 extends with US-3 bonus (120min dela
     });
 
     const lastVal = await page.evaluate(() => parseInt(document.getElementById('slider-last-meal').value));
-    expect(lastVal).toBe(660); // 120 + 480 + floor(120/2) = 120 + 480 + 60 = 660
+    expect(lastVal).toBe(600); // 120 + 480 = 600
 });
 
 test('fasting: moving toggle 2 → toggle 1 back-calculates eating start', async ({ page }) => {
@@ -103,16 +103,16 @@ test('fasting: moving toggle 2 → toggle 1 back-calculates eating start', async
     await page.goto('/');
     await openSimulator(page);
 
-    // Set t2=660 → t1 = round((660-480)*2/3) = round(120) = 120
+    // Set t2=600 → t1 = t2 - 480 = 120
     await page.evaluate(() => {
-        document.getElementById('slider-last-meal').value = 660;
+        document.getElementById('slider-last-meal').value = 600;
         document.getElementById('slider-last-meal').dispatchEvent(new Event('input'));
     });
 
     const firstVal = await page.evaluate(() => parseInt(document.getElementById('slider-first-meal').value));
     expect(firstVal).toBe(120);
     const lastVal = await page.evaluate(() => parseInt(document.getElementById('slider-last-meal').value));
-    expect(lastVal).toBe(660); // recomputed: 120 + 480 + 60 = 660
+    expect(lastVal).toBe(600); // recomputed: 120 + 480 = 600
 });
 
 test('fasting: moving toggle 2 below 480 → toggle 2 snaps to 480, toggle 1 at 0', async ({ page }) => {
@@ -142,14 +142,39 @@ test('fasting: standard 8h eating window when first meal at fasting end', async 
     expect(result.eatDurationMs).toBe(DURATION_EATING_MS); // 8h
 });
 
-test('fasting: US-3 fasting bonus extends eating window when first meal is late', async ({ page }) => {
-    // 120min (2h) delay → fastingBonus = floor(120min*60000 / 2) in ms = 1h
+test('fasting: US-20 late first meal keeps the eating window 8h and shortens the NEXT fast 1:1', async ({ page }) => {
+    // 120min (2h) delay → 2h Fasting bonus for the next Fasting window
     await setAppState(page, makeFastingState());
     await page.goto('/');
     await openSimulator(page);
 
     const result = await calcEat(page, 120);
-    expect(result.eatDurationMs).toBe(DURATION_EATING_MS + 60 * 60 * 1000); // 9h
+    expect(result.eatDurationMs).toBe(DURATION_EATING_MS); // 8h
+    expect(result.nextFastShortenedByMs).toBe(2 * 60 * 60 * 1000);
+});
+
+test('fasting: no delay → no "next fast shortened" info', async ({ page }) => {
+    await setAppState(page, makeFastingState());
+    await page.goto('/');
+    await openSimulator(page);
+
+    const result = await calcEat(page, 0);
+    expect(result.nextFastShortenedByMs).toBe(0);
+    await expect(page.locator('#sim-next-fast-shortened')).toBeHidden();
+});
+
+test('fasting: US-20 "next fast shortened" line is shown with the delay after moving toggle 1', async ({ page }) => {
+    await setAppState(page, makeFastingState());
+    await page.goto('/');
+    await openSimulator(page);
+
+    await page.evaluate(() => {
+        document.getElementById('slider-first-meal').value = 150;
+        document.getElementById('slider-first-meal').dispatchEvent(new Event('input'));
+    });
+
+    await expect(page.locator('#sim-next-fast-shortened')).toBeVisible();
+    await expect(page.locator('#sim-next-fast-shortened-val')).toHaveText('2h 30m');
 });
 
 test('fasting: output section displays correct eating window after slider move', async ({ page }) => {
@@ -157,23 +182,23 @@ test('fasting: output section displays correct eating window after slider move',
     await page.goto('/');
     await openSimulator(page);
 
-    // Move toggle 1 to 120 min (2h delay → 1h US-3 bonus → 9h eating window)
+    // Move toggle 1 to 120 min (2h delay → still an 8h eating window)
     await page.evaluate(() => {
         document.getElementById('slider-first-meal').value = 120;
         document.getElementById('slider-first-meal').dispatchEvent(new Event('input'));
     });
 
-    // Duration must reflect the 9h eating window in the DOM
+    // Duration must reflect the 8h eating window in the DOM
     const duration = await page.evaluate(() =>
         document.getElementById('sim-fast-duration').textContent
     );
-    expect(duration).toBe('9h');
+    expect(duration).toBe('8h');
 
     // Start and end times must be consistent with the computed eating window
     const { startText, endText } = await page.evaluate(() => {
         const sliderStart = simState.sliderStartMs;
         const eatStart = sliderStart + 120 * 60000;                 // T1 = 120min from fasting end
-        const eatEnd   = sliderStart + (120 + 480 + 60) * 60000;    // + 8h + 1h bonus
+        const eatEnd   = sliderStart + (120 + 480) * 60000;         // + 8h
         return {
             startText: document.getElementById('sim-fast-start').textContent.trim(),
             endText:   document.getElementById('sim-fast-end').textContent.trim(),
