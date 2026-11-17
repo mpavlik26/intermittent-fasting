@@ -56,6 +56,14 @@ function setupEventListeners() {
         elBtnToggleHistory.addEventListener('click', () => toggleHistory());
     }
 
+    // US-21: explicit end of the Eating window
+    if (elBtnEndEating) elBtnEndEating.addEventListener('click', openEndEatingDialog);
+    if (elEndEatingNow) elEndEatingNow.addEventListener('click', endEatingNow);
+    if (elEndEatingLogged) elEndEatingLogged.addEventListener('click', endEatingAtLoggedMeal);
+    if (elEndEatingCustomToggle) elEndEatingCustomToggle.addEventListener('click', toggleEndEatingCustom);
+    if (elEndEatingCustomConfirm) elEndEatingCustomConfirm.addEventListener('click', endEatingAtCustomTime);
+    if (elEndEatingCancel) elEndEatingCancel.addEventListener('click', closeEndEatingDialog);
+
     if (elAppTitle) {
         elAppTitle.addEventListener('click', handleTitleClick);
     }

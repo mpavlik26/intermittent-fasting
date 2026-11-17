@@ -149,6 +149,35 @@ function transitionToFasting() {
     updateUI();
 }
 
+// US-21: lowest time the user may pick as "last meal" when explicitly ending the Eating window —
+// never earlier than an already logged last meal (or the window start if none is logged)
+function getExplicitEndMinMs() {
+    return appState.lastMealTime ? appState.lastMealTime : appState.windowStartTime;
+}
+
+// US-21: explicitly end the running Eating window as if the last meal had been at timeMs.
+// Reuses the normal Eating→Fasting transition: Fasting starts at timeMs, Eating bonus = E − timeMs,
+// history records the Eating window with its original end E. Returns false if timeMs is not allowed.
+// The caller is responsible for tick() (fast-forward if the Fasting window is already over).
+function endEatingWindowExplicitly(timeMs) {
+    if (appState.currentState !== STATES.EATING) return false;
+    if (typeof timeMs !== 'number' || timeMs < getExplicitEndMinMs() || timeMs > getCurrentTime()) return false;
+
+    // E = the window's current end (also covers manual sessions, which don't set the target)
+    appState.lastEatingWindowTargetMs = appState.windowEndTime;
+    appState.lastMealTime = timeMs;
+    transitionToFasting();
+    return true;
+}
+
+// US-21: a Fasting window that was started by explicitly ending Eating early is still "before E";
+// a naturally started Fasting window always begins at or after E.
+function isExplicitlyEndedFast() {
+    return appState.currentState === STATES.FASTING &&
+        appState.lastEatingWindowTargetMs != null &&
+        getCurrentTime() < appState.lastEatingWindowTargetMs;
+}
+
 function transitionToPotential() {
     appState.currentState = STATES.POTENTIAL_EATING;
     appState.lastMealTime = null;
@@ -303,10 +332,11 @@ function prolongEatingAndStartFast(retroTimeMs) {
     // deferred to the next Eating window (US-20: no longer applied immediately here)
     appState.eatingPenaltyMs = PROLONGING_PENALTY_MULTIPLIER * Math.max(0, now - originalTargetEnd);
 
-    // Restart Fast from now, discarding any Eating bonus already banked
+    // Restart Fast from now. Past E the previously banked Eating bonus is discarded;
+    // US-21: before E the bonus is simply recalculated for the new "last meal" time (E − now).
     appState.currentState = STATES.FASTING;
     appState.windowStartTime = now;
-    appState.eatingBonusMs = 0;
+    appState.eatingBonusMs = getEatingBonusForTime(now);
 
     // US-20: this restarted window never actually completed (we're correcting it
     // before it did), so any Fasting bonus/penalty already applied to it is still

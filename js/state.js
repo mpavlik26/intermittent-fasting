@@ -1,5 +1,5 @@
 // --- Constants ---
-console.log("APP_VERSION: US-20-ver-2");
+console.log("APP_VERSION: US-21-ver-1");
 const STATES = {
     POTENTIAL_EATING: 'potential',
     EATING: 'eating',
@@ -145,6 +145,23 @@ const elAmountPickerMinus = document.getElementById('amount-picker-minus');
 const elAmountPickerPlus = document.getElementById('amount-picker-plus');
 const elAmountPickerConfirm = document.getElementById('amount-picker-confirm');
 const elAmountPickerPreview = document.getElementById('amount-picker-preview');
+
+// US-21: Explicit end of the Eating window
+const elBtnEndEating = document.getElementById('btn-end-eating');
+const elEndEatingOverlay = document.getElementById('end-eating-overlay');
+const elEndEatingOriginal = document.getElementById('end-eating-original');
+const elEndEatingNow = document.getElementById('end-eating-now');
+const elEndEatingLogged = document.getElementById('end-eating-logged');
+const elEndEatingCustomToggle = document.getElementById('end-eating-custom-toggle');
+const elEndEatingCustom = document.getElementById('end-eating-custom');
+const elEndEatingTimeInput = document.getElementById('end-eating-time-input');
+const elEndEatingRange = document.getElementById('end-eating-range');
+const elEndEatingError = document.getElementById('end-eating-error');
+const elEndEatingCustomConfirm = document.getElementById('end-eating-custom-confirm');
+const elEndEatingCancel = document.getElementById('end-eating-cancel');
+const elBreakPrematureCard = document.getElementById('break-premature-card');
+const elBreakProlongBonusNote = document.getElementById('break-prolong-bonus-note');
+const elBreakProlongBonus = document.getElementById('break-prolong-bonus');
 
 function loadState() {
     const saved = localStorage.getItem('fastingTrackerState');

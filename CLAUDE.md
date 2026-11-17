@@ -59,6 +59,7 @@ Test files in `tests/`:
 | `manual-session.spec.js` | US-11 setup overlay, mid-session override |
 | `simulator.spec.js` | US-12 simulator visibility, slider state, calculation correctness, constraints |
 | `hold-to-confirm.spec.js` | US-14 hold-to-confirm countdown on Log First/Last Meal buttons |
+| `explicit-end.spec.js` | US-21 explicit end of the Eating window (dialog), way back to eating before E |
 
 Time-based transitions are tested by calling `page.evaluate(() => { appState.timeOffsetMs += ms; tick(); })` — same mechanism as the in-app debug buttons but without needing to unlock the debug panel.
 
@@ -83,6 +84,7 @@ Single-page app — no build system, so `app.js` was split into plain sibling `<
 | `js/transitions.js` | Core state machine: `transitionToEating`/`logLastMeal`/`transitionToFasting`/`transitionToPotential`, `submitMealLog`, break-fast handlers (US-7) |
 | `js/simulator.js` | US-12/13 fasting/eating window simulator |
 | `js/bonus-storage.js` | US-18 stored-bonus amount picker |
+| `js/end-eating.js` | US-21 explicit-end dialog (now / logged meal / different time / cancel) |
 | `js/ui.js` | `tick()`, `updateUI()`, hold-to-confirm, debug-panel unlock |
 | `js/manual-session.js` | US-11 manual session setup/override |
 | `js/main.js` | `init()`, `setupEventListeners()`, `addTimeOffset()`, `DOMContentLoaded` boot |
