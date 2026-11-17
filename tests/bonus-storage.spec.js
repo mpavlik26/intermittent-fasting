@@ -269,9 +269,9 @@ test('US-20: using stored Eating bonus in POTENTIAL_EATING defers via pendingEat
 
 test('US-20: using stored Fasting bonus in EATING reserves it; applied at the next Fasting window', async ({ page }) => {
     const now = Date.now();
-    const windowEndTime = now + 5000;
+    const windowEndTime = now + 30000;
     await setAppState(page, makeEatingState({
-        windowStartTime: now - DURATION_EATING_MS + 5000,
+        windowStartTime: now - DURATION_EATING_MS + 30000,
         windowEndTime,
         lastEatingWindowTargetMs: windowEndTime,
         storedFastingBonusMs: 30 * MIN,
@@ -287,7 +287,7 @@ test('US-20: using stored Fasting bonus in EATING reserves it; applied at the ne
     expect(state.pendingFastingBonusUseMs).toBe(30 * MIN);
     expect(state.storedFastingBonusMs).toBe(0);
 
-    await advanceTime(page, 10000);
+    await advanceTime(page, 40000);
     await expect(page.locator('#current-state')).toHaveText('Fasting Window');
 
     state = await readState(page);

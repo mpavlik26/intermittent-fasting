@@ -19,6 +19,19 @@ function cascadeSkip(amountMs, standardWindowMs) {
     return { skips, remainderMs };
 }
 
+// US-20: single source of truth for the Eating window that starts at startMs, given the
+// Fasting bonus that will be earned by starting then. Applies stored/banked Eating bonus,
+// Eating penalty, and eager cascade-skips (each full 16h of Fasting bonus adds 8h).
+function planEatingWindow(startMs, fastingBonusMs) {
+    const { skips, remainderMs } = cascadeSkip(fastingBonusMs, DURATION_FASTING_MS);
+    const endTime = startMs + DURATION_EATING_MS
+        + appState.pendingEatingBonusUseMs
+        + appState.eatingBonusMs
+        - appState.eatingPenaltyMs
+        + skips * DURATION_EATING_MS;
+    return { endTime, skips, remainderMs };
+}
+
 function transitionToEating(retroTimeMs) {
     // If called via standard event listener, it passes PointerEvent. We check if it's a number.
     const timeToUse = typeof retroTimeMs === 'number' ? retroTimeMs : getCurrentTime();
@@ -29,22 +42,18 @@ function transitionToEating(retroTimeMs) {
         bonusMs = timeToUse - appState.windowEndTime;
     }
 
-    // US-18: Consume any stored-bonus minutes reserved while in Potential Eating
-    const pendingUseMs = appState.pendingEatingBonusUseMs;
-
     // US-20: Eating bonus/penalty banked during the previous cycle, applied now
     const eatingBonusMs = appState.eatingBonusMs;
     const eatingPenaltyMs = appState.eatingPenaltyMs;
 
-    appState.currentState = STATES.EATING;
-    appState.windowStartTime = timeToUse;
-    let targetEndTime = timeToUse + DURATION_EATING_MS + pendingUseMs + eatingBonusMs - eatingPenaltyMs;
-
     // US-20: eagerly cascade-skip whole Fasting/Potential-Eating pairs if the
     // Fasting bonus is large enough, extending this Eating window immediately
-    const { skips, remainderMs } = cascadeSkip(bonusMs, DURATION_FASTING_MS);
-    targetEndTime += skips * DURATION_EATING_MS;
-    bonusMs = remainderMs;
+    const plan = planEatingWindow(timeToUse, bonusMs);
+    const targetEndTime = plan.endTime;
+    bonusMs = plan.remainderMs;
+
+    appState.currentState = STATES.EATING;
+    appState.windowStartTime = timeToUse;
 
     appState.fastingBonusMs = bonusMs;
     appState.windowEndTime = targetEndTime;

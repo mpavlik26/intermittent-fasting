@@ -71,11 +71,10 @@ function tick() {
             elFastingBonusBadge.classList.add('hidden');
         }
 
-        // US-5/US-20: Potential Eating Forecast — eager cascade-skip preview of the eventual
-        // Eating window end if the pending Fasting bonus is larger than a standard Fasting window
-        const { skips } = cascadeSkip(pendingFastingBonusMs, DURATION_FASTING_MS);
-        const forecastedEatingEnd = now + DURATION_EATING_MS + skips * DURATION_EATING_MS;
-        elForecastEatingEnd.innerHTML = renderTime(forecastedEatingEnd);
+        // US-5/US-20: Potential Eating Forecast — exactly the window transitionToEating() would
+        // create now: banked/stored Eating bonus, Eating penalty and cascade-skips all included
+        const bonusForForecastMs = pendingFastingBonusMs > 0 ? pendingFastingBonusMs : appState.fastingBonusMs;
+        elForecastEatingEnd.innerHTML = renderTime(planEatingWindow(now, bonusForForecastMs).endTime);
     }
 
     // Update timers & labels (US-9: Global updates for midnight transitions)
@@ -189,7 +188,11 @@ function updateUI() {
     else if (state === STATES.EATING) {
         elCurrentStateTitle.textContent = "Eating Window";
 
-        let desc = "You have 8 hours to consume your daily meals.";
+        // Real window length (8h + Eating bonus - Eating penalty + 8h per cascade-skip)
+        const totalMins = Math.round((appState.windowEndTime - appState.windowStartTime) / 60000);
+        let desc = totalMins === 480
+            ? "You have 8 hours to consume your daily meals."
+            : `You have ${formatMinutesBadge(totalMins)} to consume your daily meals.`;
 
         // US-4/US-20 UI Feedback: Eating bonus extends THIS Eating window
         // (eatingBonusMs itself is already consumed/reset on entry, so the amount applied to
@@ -199,7 +202,7 @@ function updateUI() {
             const bonusMins = Math.floor(appState.appliedEatingBonusMs / (60 * 1000));
             elEatingBonusText.textContent = `+${formatMinutesBadge(bonusMins)} eating bonus applied!`;
             elEatingBonusBadge.classList.remove('hidden');
-            desc = `You earned a ${formatMinutesBadge(bonusMins)} bonus for finishing eating early! Total window: ${formatMinutesBadge(480 + bonusMins)}.`;
+            desc = `You earned a ${formatMinutesBadge(bonusMins)} bonus for finishing eating early! Total window: ${formatMinutesBadge(totalMins)}.`;
         } else {
             elEatingBonusBadge.classList.add('hidden');
         }
