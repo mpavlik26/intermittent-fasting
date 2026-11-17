@@ -9,7 +9,6 @@ const STATES = {
 const DURATION_EATING_MS = 8 * 60 * 60 * 1000;
 const DURATION_FASTING_MS = 16 * 60 * 60 * 1000;
 
-const BONUS_DIVISOR = 2; // US-3/US-4: bonus = half of excess/early time
 const PROLONGING_PENALTY_MULTIPLIER = 2; // US-7 Option 1
 const PREMATURE_START_PENALTY_MULTIPLIER = 2; // US-7 Option 2 (was 4, halved by US-17)
 
@@ -21,11 +20,16 @@ let appState = {
     lastMealTime: null,
     fastingBonusMs: 0,
     eatingBonusMs: 0,
-    storedBonusMs: 0, // US-18: Bonus minutes moved into personal storage
-    pendingUseMs: 0, // US-18: Stored minutes reserved for next Eating window
-    prolongingPenaltyMs: 0, // Option 1
-    prematureStartPenaltyMs: 0, // Option 2
-    appliedPenaltyMs: 0,
+    storedFastingBonusMs: 0, // US-18/US-20: Fasting bonus moved into personal storage
+    storedEatingBonusMs: 0, // US-18/US-20: Eating bonus moved into personal storage
+    pendingEatingBonusUseMs: 0, // US-18: Stored Eating bonus reserved for next Eating window
+    pendingFastingBonusUseMs: 0, // US-20: Stored Fasting bonus reserved for next Fasting window
+    eatingPenaltyMs: 0, // US-20: deferred penalty, shortens next Eating window (was prolongingPenaltyMs)
+    fastingPenaltyMs: 0, // US-20: deferred penalty, extends next Fasting window (was prematureStartPenaltyMs)
+    appliedFastingBonusMs: 0,
+    appliedEatingBonusMs: 0,
+    appliedFastingPenaltyMs: 0,
+    appliedEatingPenaltyMs: 0,
     lastEatingWindowTargetMs: null,
     timeOffsetMs: 0,
     isDebugUnlocked: false, // US-8: Secret toggle
@@ -36,8 +40,9 @@ let appState = {
 // US-12: Simulator state (not persisted)
 let simState = { sliderStartMs: 0, sliderEndMs: 0, lastMealMinMins: 0 };
 
-// US-18: Amount picker state (not persisted)
+// US-18/US-20: Amount picker state (not persisted)
 let amountPickerMode = null; // 'store' | 'use'
+let amountPickerBonusType = null; // 'fasting' | 'eating'
 let amountPickerMaxMinutes = 0;
 let amountPickerValueMinutes = 0;
 
@@ -60,8 +65,16 @@ const elBtnLastMeal = document.getElementById('btn-last-meal');
 const elMealTypeSelect = document.getElementById('meal-type-select');
 const elMealTimeInput = document.getElementById('meal-time-input');
 const elBtnSubmitLog = document.getElementById('btn-submit-log');
-const elBonusText = document.getElementById('bonus-text');
-const elBonusBadge = document.getElementById('bonus-badge');
+
+// US-20 DOM Elements: four independent badges (was a single combined bonus/penalty badge)
+const elFastingBonusBadge = document.getElementById('fasting-bonus-badge');
+const elFastingBonusText = document.getElementById('fasting-bonus-text');
+const elEatingBonusBadge = document.getElementById('eating-bonus-badge');
+const elEatingBonusText = document.getElementById('eating-bonus-text');
+const elFastingPenaltyBadge = document.getElementById('fasting-penalty-badge');
+const elFastingPenaltyText = document.getElementById('fasting-penalty-text');
+const elEatingPenaltyBadge = document.getElementById('eating-penalty-badge');
+const elEatingPenaltyText = document.getElementById('eating-penalty-text');
 
 // US-5 DOM Elements
 const elForecastSection = document.getElementById('forecast-section');
@@ -84,9 +97,6 @@ const elBtnToggleBreak = document.getElementById('btn-toggle-break');
 const elBtnBreakProlong = document.getElementById('btn-break-prolong');
 const elBtnBreakPremature = document.getElementById('btn-break-premature');
 
-const elPenaltyBadge = document.getElementById('penalty-badge');
-const elPenaltyText = document.getElementById('penalty-text');
-
 const elBreakProlongPenalty = document.getElementById('break-prolong-penalty');
 const elBreakProlongEnd = document.getElementById('break-prolong-end');
 const elBreakPrematurePenalty = document.getElementById('break-premature-penalty');
@@ -107,6 +117,9 @@ const elSimTimeLast = document.getElementById('sim-time-last');
 const elSimFastStart = document.getElementById('sim-fast-start');
 const elSimFastEnd = document.getElementById('sim-fast-end');
 const elSimFastDuration = document.getElementById('sim-fast-duration');
+// US-20: Simulator preview of next Fasting window shortened by delayed-start Fasting bonus
+const elSimNextFastShortened = document.getElementById('sim-next-fast-shortened');
+const elSimNextFastShortenedVal = document.getElementById('sim-next-fast-shortened-val');
 // US-13: Additional simulator DOM refs for dynamic labels
 const elSimTitle = document.getElementById('simulator-title');
 const elSimOutputLabel = document.getElementById('sim-output-label');
@@ -119,8 +132,9 @@ const elBtnToggleHistory = document.getElementById('btn-toggle-history');
 const elHistoryContent = document.getElementById('history-content');
 const elHistoryList = document.getElementById('history-list');
 
-// US-18 DOM Elements
-const elStoredBonusIndicator = document.getElementById('stored-bonus-indicator');
+// US-18/US-20 DOM Elements
+const elStoredFastingBonusIndicator = document.getElementById('stored-fasting-bonus-indicator');
+const elStoredEatingBonusIndicator = document.getElementById('stored-eating-bonus-indicator');
 const elAmountPickerOverlay = document.getElementById('amount-picker-overlay');
 const elAmountPickerTitle = document.getElementById('amount-picker-title');
 const elAmountPickerClose = document.getElementById('amount-picker-close');
@@ -161,11 +175,16 @@ function resetState() {
         lastMealTime: null,
         fastingBonusMs: 0,
         eatingBonusMs: 0,
-        storedBonusMs: 0,
-        pendingUseMs: 0,
-        prolongingPenaltyMs: 0,
-        prematureStartPenaltyMs: 0,
-        appliedPenaltyMs: 0,
+        storedFastingBonusMs: 0,
+        storedEatingBonusMs: 0,
+        pendingEatingBonusUseMs: 0,
+        pendingFastingBonusUseMs: 0,
+        eatingPenaltyMs: 0,
+        fastingPenaltyMs: 0,
+        appliedFastingBonusMs: 0,
+        appliedEatingBonusMs: 0,
+        appliedFastingPenaltyMs: 0,
+        appliedEatingPenaltyMs: 0,
         lastEatingWindowTargetMs: null,
         timeOffsetMs: 0,
         isDebugUnlocked: appState.isDebugUnlocked,

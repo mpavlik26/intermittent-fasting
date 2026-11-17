@@ -134,9 +134,12 @@ function manualSetWindow(type, startTimeMs, endTimeMs) {
 
     appState.fastingBonusMs = 0;
     appState.eatingBonusMs = 0;
-    appState.prolongingPenaltyMs = 0;
-    appState.prematureStartPenaltyMs = 0;
-    appState.appliedPenaltyMs = 0;
+    appState.eatingPenaltyMs = 0;
+    appState.fastingPenaltyMs = 0;
+    appState.appliedFastingBonusMs = 0;
+    appState.appliedEatingBonusMs = 0;
+    appState.appliedFastingPenaltyMs = 0;
+    appState.appliedEatingPenaltyMs = 0;
 
     saveState();
     updateUI();

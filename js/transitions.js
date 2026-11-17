@@ -12,27 +12,48 @@ function parseRetrospectiveTime(timeStr) {
     return candidate.getTime();
 }
 
+// US-20: how many full standardWindowMs chunks fit in amountMs, and what's left over
+function cascadeSkip(amountMs, standardWindowMs) {
+    const skips = Math.floor(amountMs / standardWindowMs);
+    const remainderMs = amountMs - skips * standardWindowMs;
+    return { skips, remainderMs };
+}
+
 function transitionToEating(retroTimeMs) {
     // If called via standard event listener, it passes PointerEvent. We check if it's a number.
     const timeToUse = typeof retroTimeMs === 'number' ? retroTimeMs : getCurrentTime();
 
-    // US-3: Calculate bonus if fasting continued into potential eating window
+    // US-20: Fasting bonus earned from delaying the start of eating (full 1:1, no divisor)
     let bonusMs = appState.fastingBonusMs; // Keep existing if already set (e.g. re-logging)
     if (appState.currentState === STATES.POTENTIAL_EATING && appState.windowEndTime && timeToUse > appState.windowEndTime) {
-        bonusMs = Math.floor((timeToUse - appState.windowEndTime) / BONUS_DIVISOR);
+        bonusMs = timeToUse - appState.windowEndTime;
     }
 
     // US-18: Consume any stored-bonus minutes reserved while in Potential Eating
-    const pendingUseMs = appState.pendingUseMs;
+    const pendingUseMs = appState.pendingEatingBonusUseMs;
+
+    // US-20: Eating bonus/penalty banked during the previous cycle, applied now
+    const eatingBonusMs = appState.eatingBonusMs;
+    const eatingPenaltyMs = appState.eatingPenaltyMs;
 
     appState.currentState = STATES.EATING;
     appState.windowStartTime = timeToUse;
+    let targetEndTime = timeToUse + DURATION_EATING_MS + pendingUseMs + eatingBonusMs - eatingPenaltyMs;
+
+    // US-20: eagerly cascade-skip whole Fasting/Potential-Eating pairs if the
+    // Fasting bonus is large enough, extending this Eating window immediately
+    const { skips, remainderMs } = cascadeSkip(bonusMs, DURATION_FASTING_MS);
+    targetEndTime += skips * DURATION_EATING_MS;
+    bonusMs = remainderMs;
+
     appState.fastingBonusMs = bonusMs;
-    const targetEndTime = timeToUse + DURATION_EATING_MS + bonusMs + pendingUseMs;
     appState.windowEndTime = targetEndTime;
     appState.lastEatingWindowTargetMs = targetEndTime; // US-7: Vital for Penalty 1
-    appState.eatingBonusMs = 0; // Reset for new window
-    appState.pendingUseMs = 0; // US-18: Reservation consumed
+    appState.appliedEatingBonusMs = eatingBonusMs;
+    appState.appliedEatingPenaltyMs = eatingPenaltyMs;
+    appState.eatingBonusMs = 0; // Applied, reset for new window
+    appState.eatingPenaltyMs = 0; // Applied, reset for new window
+    appState.pendingEatingBonusUseMs = 0; // US-18: Reservation consumed
     appState.lastMealTime = null;
 
     // US-10: We don't add to history here, but we could if we wanted to track Potential windows.
@@ -48,20 +69,24 @@ function logLastMeal(retroTimeMs) {
 
     if (appState.currentState === STATES.FASTING) {
         appState.windowStartTime = timeToUse;
-        appState.eatingBonusMs = calculateEatingBonus();
-        const penalty = appState.prolongingPenaltyMs + appState.prematureStartPenaltyMs;
-        appState.windowEndTime = timeToUse + DURATION_FASTING_MS - appState.eatingBonusMs + penalty;
-        appState.appliedPenaltyMs = penalty;
+        appState.eatingBonusMs = calculateEatingBonus(); // US-20: banked for the next Eating window
+        const fastingBonusMs = appState.fastingBonusMs;
+        const fastingPenaltyMs = appState.fastingPenaltyMs;
+        appState.windowEndTime = timeToUse + DURATION_FASTING_MS - fastingBonusMs + fastingPenaltyMs;
+        appState.appliedFastingBonusMs = fastingBonusMs;
+        appState.appliedFastingPenaltyMs = fastingPenaltyMs;
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         const eatingBonus = calculateEatingBonus();
-        const penalty = appState.prolongingPenaltyMs + appState.prematureStartPenaltyMs;
-        const fastingEnd = timeToUse + DURATION_FASTING_MS - eatingBonus + penalty;
+        const fastingBonusMs = appState.fastingBonusMs;
+        const fastingPenaltyMs = appState.fastingPenaltyMs;
+        const fastingEnd = timeToUse + DURATION_FASTING_MS - fastingBonusMs + fastingPenaltyMs;
         if (getCurrentTime() < fastingEnd) {
             appState.currentState = STATES.FASTING;
             appState.windowStartTime = timeToUse;
-            appState.eatingBonusMs = eatingBonus;
+            appState.eatingBonusMs = eatingBonus; // US-20: banked for the next Eating window
             appState.windowEndTime = fastingEnd;
-            appState.appliedPenaltyMs = penalty;
+            appState.appliedFastingBonusMs = fastingBonusMs;
+            appState.appliedFastingPenaltyMs = fastingPenaltyMs;
         }
     }
 
@@ -75,32 +100,42 @@ function calculateEatingBonus() {
 
 function getEatingBonusForTime(timeMs) {
     if (timeMs && appState.lastEatingWindowTargetMs && timeMs < appState.lastEatingWindowTargetMs) {
-        return Math.floor((appState.lastEatingWindowTargetMs - timeMs) / BONUS_DIVISOR);
+        return appState.lastEatingWindowTargetMs - timeMs;
     }
     return 0;
 }
 
 function transitionToFasting() {
     console.log("Transitioning to FASTING...");
-    const now = getCurrentTime();
     const originalEatingStart = appState.windowStartTime;
     const originalEatingTargetEnd = appState.lastEatingWindowTargetMs;
+    const appliedEatingBonusMs = appState.appliedEatingBonusMs;
+    const appliedEatingPenaltyMs = appState.appliedEatingPenaltyMs;
 
     appState.currentState = STATES.FASTING;
     const baseStartTime = appState.lastMealTime ? appState.lastMealTime : appState.windowEndTime;
     appState.windowStartTime = baseStartTime;
 
-    // US-4 & US-7: Base duration + Penalty - Bonus
+    // US-20: Eating bonus from finishing early is banked for the next Eating window
     appState.eatingBonusMs = calculateEatingBonus();
-    const totalPenalty = appState.prolongingPenaltyMs + appState.prematureStartPenaltyMs;
-    appState.windowEndTime = baseStartTime + DURATION_FASTING_MS - appState.eatingBonusMs + totalPenalty;
-    appState.appliedPenaltyMs = totalPenalty;
 
-    // US-10: Record the Eating window that just finished
-    // US-10 refined: End time is target end time. Bonus shown is what was APPLIED to this window (fastingBonusMs).
-    addToHistory(STATES.EATING, originalEatingStart, originalEatingTargetEnd, appState.fastingBonusMs, 0);
+    // US-20: Apply whatever Fasting bonus/penalty is pending. The live fields are
+    // NOT cleared here - they stay "untouched" until this window is actually lived
+    // through (transitionToPotential) or abandoned (startEatingPrematurely), so a
+    // retroactive prolong() landing inside this window can still reuse them.
+    const fastingBonusMs = appState.fastingBonusMs + appState.pendingFastingBonusUseMs;
+    const fastingPenaltyMs = appState.fastingPenaltyMs;
+    appState.windowEndTime = baseStartTime + DURATION_FASTING_MS - fastingBonusMs + fastingPenaltyMs;
+    appState.appliedFastingBonusMs = fastingBonusMs;
+    appState.appliedFastingPenaltyMs = fastingPenaltyMs;
+    appState.pendingFastingBonusUseMs = 0; // US-18: Reservation consumed
 
-    appState.fastingBonusMs = 0; // Reset for new cycle
+    // US-10: Record the Eating window that just finished, with what was applied to IT
+    addToHistory(STATES.EATING, originalEatingStart, originalEatingTargetEnd, {
+        eatingBonusMs: appliedEatingBonusMs,
+        eatingPenaltyMs: appliedEatingPenaltyMs,
+    });
+
     saveState();
     updateUI();
 }
@@ -109,19 +144,23 @@ function transitionToPotential() {
     appState.currentState = STATES.POTENTIAL_EATING;
     appState.lastMealTime = null;
 
-    const totalPenaltyAtEnd = appState.appliedPenaltyMs;
-    const eatingBonusAtEnd = appState.eatingBonusMs;
+    const appliedFastingBonusMs = appState.appliedFastingBonusMs;
+    const appliedFastingPenaltyMs = appState.appliedFastingPenaltyMs;
     const fastingWindowStart = appState.windowStartTime;
     const fastingWindowEnd = appState.windowEndTime;
 
-    appState.prolongingPenaltyMs = 0;
-    appState.prematureStartPenaltyMs = 0;
-    appState.appliedPenaltyMs = 0;
-    appState.eatingBonusMs = 0;
+    // US-20: This Fasting window was actually lived through to completion, so
+    // whatever Fasting bonus/penalty it carried is now fully spent.
+    appState.fastingBonusMs = 0;
+    appState.fastingPenaltyMs = 0;
+    appState.appliedFastingBonusMs = 0;
+    appState.appliedFastingPenaltyMs = 0;
 
-    // US-10: Record the Fasting window that just finished
-    // US-10 refined: Applied bonus (eatingBonusMs) and penalties (prolonging/premature) are shown here.
-    addToHistory(STATES.FASTING, fastingWindowStart, fastingWindowEnd, eatingBonusAtEnd, totalPenaltyAtEnd);
+    // US-10: Record the Fasting window that just finished, with what was applied to IT
+    addToHistory(STATES.FASTING, fastingWindowStart, fastingWindowEnd, {
+        fastingBonusMs: appliedFastingBonusMs,
+        fastingPenaltyMs: appliedFastingPenaltyMs,
+    });
 
     saveState();
     updateUI();
@@ -210,28 +249,37 @@ function startEatingPrematurely(retroTimeMs) {
     const now = typeof retroTimeMs === 'number' ? retroTimeMs : getCurrentTime();
     const originalEnd = appState.windowEndTime;
     const originalStartTime = appState.windowStartTime;
-    const originalPenalty = appState.appliedPenaltyMs;
+    const originalAppliedFastingBonusMs = appState.appliedFastingBonusMs;
+    const originalAppliedFastingPenaltyMs = appState.appliedFastingPenaltyMs;
 
-    // Option 2 (Penalty 2): set based on remaining fast time
-    appState.prematureStartPenaltyMs = PREMATURE_START_PENALTY_MULTIPLIER * Math.max(0, originalEnd - now);
+    // Option 2 (Penalty 2): set based on remaining fast time, deferred to the next Fasting window
+    appState.fastingPenaltyMs = PREMATURE_START_PENALTY_MULTIPLIER * Math.max(0, originalEnd - now);
 
-    // US-7: Clear Penalty 1 when starting a new Eating window
-    appState.prolongingPenaltyMs = 0;
-    appState.appliedPenaltyMs = 0;
+    // US-7/US-20: Clear Option 1's deferred Eating penalty when starting a new Eating window this way
+    appState.eatingPenaltyMs = 0;
+    appState.appliedEatingPenaltyMs = 0;
+    appState.appliedEatingBonusMs = 0;
+
+    // US-20: This Fasting window is abandoned here (cut short), so whatever
+    // Fasting bonus/penalty it carried is now fully spent.
+    appState.fastingBonusMs = 0;
+    appState.appliedFastingBonusMs = 0;
+    appState.appliedFastingPenaltyMs = 0;
 
     // Transition to 100% standard eating window (no rewards/penalties here)
     appState.currentState = STATES.EATING;
     appState.windowStartTime = now;
-    appState.fastingBonusMs = 0;
     const targetEatingEnd = now + DURATION_EATING_MS;
     appState.windowEndTime = targetEatingEnd;
     appState.lastEatingWindowTargetMs = targetEatingEnd;
     appState.eatingBonusMs = 0;
     appState.lastMealTime = null;
 
-    // US-10: Record the Fasting window that was cut short
-    // US-10 refined: Show target end time and active bonus/penalty
-    addToHistory(STATES.FASTING, originalStartTime, originalEnd, appState.eatingBonusMs, originalPenalty);
+    // US-10: Record the Fasting window that was cut short, with what was actually applied to IT
+    addToHistory(STATES.FASTING, originalStartTime, originalEnd, {
+        fastingBonusMs: originalAppliedFastingBonusMs,
+        fastingPenaltyMs: originalAppliedFastingPenaltyMs,
+    });
 
     toggleBreakFastLog(false);
     saveState();
@@ -241,19 +289,32 @@ function startEatingPrematurely(retroTimeMs) {
 function prolongEatingAndStartFast(retroTimeMs) {
     const now = typeof retroTimeMs === 'number' ? retroTimeMs : getCurrentTime();
     const originalTargetEnd = appState.lastEatingWindowTargetMs;
-    const originalStartTime = appState.windowStartTime;
-    const originalPenalty = appState.appliedPenaltyMs;
 
-    // Option 1 (Penalty 1): Recalculated from original target end
-    appState.prolongingPenaltyMs = PROLONGING_PENALTY_MULTIPLIER * Math.max(0, now - originalTargetEnd);
+    // Option 1 (Penalty 1): overshoot past the original Eating window's target end,
+    // deferred to the next Eating window (US-20: no longer applied immediately here)
+    appState.eatingPenaltyMs = PROLONGING_PENALTY_MULTIPLIER * Math.max(0, now - originalTargetEnd);
 
-    // Restart Fast from now
+    // Restart Fast from now, discarding any Eating bonus already banked
     appState.currentState = STATES.FASTING;
     appState.windowStartTime = now;
     appState.eatingBonusMs = 0;
-    const totalPenalty = appState.prolongingPenaltyMs + appState.prematureStartPenaltyMs;
-    appState.windowEndTime = now + DURATION_FASTING_MS + totalPenalty;
-    appState.appliedPenaltyMs = totalPenalty;
+
+    // US-20: this restarted window never actually completed (we're correcting it
+    // before it did), so any Fasting bonus/penalty already applied to it is still
+    // "untouched" and simply gets re-applied to the new end time.
+    const fastingBonusMs = appState.fastingBonusMs;
+    const fastingPenaltyMs = appState.fastingPenaltyMs;
+    let targetEnd = now + DURATION_FASTING_MS - fastingBonusMs + fastingPenaltyMs;
+    appState.appliedFastingBonusMs = fastingBonusMs;
+    appState.appliedFastingPenaltyMs = fastingPenaltyMs;
+
+    // US-20: eagerly cascade-skip whole Eating windows if the new Eating penalty
+    // is large enough, extending this restarted Fasting window immediately
+    const { skips, remainderMs } = cascadeSkip(appState.eatingPenaltyMs, DURATION_EATING_MS);
+    targetEnd += skips * DURATION_FASTING_MS;
+    appState.eatingPenaltyMs = remainderMs;
+
+    appState.windowEndTime = targetEnd;
 
     toggleBreakFastLog(false);
     saveState();

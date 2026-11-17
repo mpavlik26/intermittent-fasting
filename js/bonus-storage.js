@@ -1,39 +1,57 @@
-// --- US-18: Stored Bonus ---
+// --- US-18/US-20: Stored Bonus (independent Fasting/Eating pools) ---
 
-// US-18.1: "store while Eating" and "use while Fasting" are the only combinations that
-// subtract from windowEndTime - they're the only ones that risk pushing it into the past.
-function isAmountPickerRisky(mode) {
-    return (mode === 'store' && appState.currentState === STATES.EATING) ||
-           (mode === 'use' && appState.currentState === STATES.FASTING);
+// US-20: "store while Fasting" (shortens current Fasting window) and "use while Fasting"
+// (also shortens it) are the risky combinations for the Fasting pool; the Eating pool
+// never shortens anything, so it's never risky.
+function isAmountPickerRisky(mode, bonusType) {
+    return mode === 'use' && bonusType === 'fasting' && appState.currentState === STATES.FASTING;
 }
 
-function getAmountPickerRawMaxMs(mode) {
+function getAmountPickerRawMaxMs(mode, bonusType) {
     if (mode === 'store') {
-        return appState.currentState === STATES.EATING ? appState.fastingBonusMs : appState.eatingBonusMs;
+        return bonusType === 'fasting' ? appState.fastingBonusMs : appState.eatingBonusMs;
     }
-    return appState.storedBonusMs;
+    return bonusType === 'fasting' ? appState.storedFastingBonusMs : appState.storedEatingBonusMs;
 }
 
-function getAmountPickerSafeMaxMs(mode) {
-    const rawMaxMs = getAmountPickerRawMaxMs(mode);
-    if (!isAmountPickerRisky(mode)) return rawMaxMs;
+function getAmountPickerSafeMaxMs(mode, bonusType) {
+    const rawMaxMs = getAmountPickerRawMaxMs(mode, bonusType);
+    if (!isAmountPickerRisky(mode, bonusType)) return rawMaxMs;
     const timeRemainingMs = Math.max(0, appState.windowEndTime - getCurrentTime());
     return Math.min(rawMaxMs, timeRemainingMs);
 }
 
-function canOpenAmountPicker(mode) {
-    return getAmountPickerSafeMaxMs(mode) >= 60000; // at least 1 full minute
+function canOpenAmountPicker(mode, bonusType) {
+    return getAmountPickerSafeMaxMs(mode, bonusType) >= 60000; // at least 1 full minute
+}
+
+// US-20: whether the currently-open picker's amount affects the window the user is in right now
+function amountPickerAffectsCurrentWindow(mode, bonusType) {
+    if (mode === 'store') return bonusType === 'fasting' && appState.currentState === STATES.FASTING;
+    return (bonusType === 'fasting' && appState.currentState === STATES.FASTING) ||
+           (bonusType === 'eating' && appState.currentState === STATES.EATING);
 }
 
 function getAmountPickerDeltaMs() {
     const amountMs = amountPickerValueMinutes * 60000;
-    return isAmountPickerRisky(amountPickerMode) ? -amountMs : amountMs;
+    if (amountPickerMode === 'store' && amountPickerBonusType === 'fasting' && appState.currentState === STATES.FASTING) {
+        return amountMs;
+    }
+    if (amountPickerMode === 'use' && amountPickerBonusType === 'fasting' && appState.currentState === STATES.FASTING) {
+        return -amountMs;
+    }
+    if (amountPickerMode === 'use' && amountPickerBonusType === 'eating' && appState.currentState === STATES.EATING) {
+        return amountMs;
+    }
+    return 0;
 }
 
-function openAmountPicker(mode) {
+function openAmountPicker(mode, bonusType) {
     amountPickerMode = mode;
-    amountPickerMaxMinutes = Math.floor(getAmountPickerSafeMaxMs(mode) / 60000);
-    elAmountPickerTitle.textContent = mode === 'store' ? 'Move Bonus to Storage' : 'Use Stored Bonus';
+    amountPickerBonusType = bonusType;
+    amountPickerMaxMinutes = Math.floor(getAmountPickerSafeMaxMs(mode, bonusType) / 60000);
+    const bonusLabel = bonusType === 'fasting' ? 'Fasting' : 'Eating';
+    elAmountPickerTitle.textContent = mode === 'store' ? `Move ${bonusLabel} Bonus to Storage` : `Use Stored ${bonusLabel} Bonus`;
     amountPickerValueMinutes = 0;
     elAmountPickerSlider.min = 0;
     elAmountPickerSlider.max = amountPickerMaxMinutes;
@@ -44,6 +62,7 @@ function openAmountPicker(mode) {
 function closeAmountPicker() {
     elAmountPickerOverlay.classList.add('hidden');
     amountPickerMode = null;
+    amountPickerBonusType = null;
 }
 
 function renderAmountPicker() {
@@ -54,10 +73,9 @@ function renderAmountPicker() {
     renderAmountPickerPreview();
 }
 
-// US-18.1: live preview of the window's resulting end time - applies to both modes
-// whenever a window end time exists (not just the risky combinations above)
+// US-20: live preview of the affected window's resulting end time, only when relevant
 function renderAmountPickerPreview() {
-    if (amountPickerMode === 'use' && appState.currentState === STATES.POTENTIAL_EATING) {
+    if (!amountPickerAffectsCurrentWindow(amountPickerMode, amountPickerBonusType)) {
         elAmountPickerPreview.classList.add('hidden');
         return;
     }
@@ -73,27 +91,34 @@ function adjustAmountPicker(delta) {
 
 function confirmAmountPicker() {
     // US-18.1: re-clamp against the current time in case the dialog was left open a while
-    const amountMs = Math.min(amountPickerValueMinutes * 60000, getAmountPickerSafeMaxMs(amountPickerMode));
+    const amountMs = Math.min(amountPickerValueMinutes * 60000, getAmountPickerSafeMaxMs(amountPickerMode, amountPickerBonusType));
     if (amountMs > 0) {
+        const isFasting = amountPickerBonusType === 'fasting';
         if (amountPickerMode === 'store') {
-            if (appState.currentState === STATES.EATING) {
+            if (isFasting) {
                 appState.fastingBonusMs -= amountMs;
-                appState.lastEatingWindowTargetMs -= amountMs;
-                appState.windowEndTime -= amountMs;
-            } else if (appState.currentState === STATES.FASTING) {
+                if (appState.currentState === STATES.FASTING) appState.windowEndTime += amountMs;
+                appState.storedFastingBonusMs += amountMs;
+            } else {
                 appState.eatingBonusMs -= amountMs;
-                appState.windowEndTime += amountMs;
+                appState.storedEatingBonusMs += amountMs;
             }
-            appState.storedBonusMs += amountMs;
         } else if (amountPickerMode === 'use') {
-            appState.storedBonusMs -= amountMs;
-            if (appState.currentState === STATES.EATING) {
-                appState.windowEndTime += amountMs;
-                appState.lastEatingWindowTargetMs += amountMs;
-            } else if (appState.currentState === STATES.FASTING) {
-                appState.windowEndTime -= amountMs;
-            } else if (appState.currentState === STATES.POTENTIAL_EATING) {
-                appState.pendingUseMs += amountMs;
+            if (isFasting) {
+                appState.storedFastingBonusMs -= amountMs;
+                if (appState.currentState === STATES.FASTING) {
+                    appState.windowEndTime -= amountMs;
+                } else {
+                    appState.pendingFastingBonusUseMs += amountMs;
+                }
+            } else {
+                appState.storedEatingBonusMs -= amountMs;
+                if (appState.currentState === STATES.EATING) {
+                    appState.windowEndTime += amountMs;
+                    appState.lastEatingWindowTargetMs += amountMs;
+                } else {
+                    appState.pendingEatingBonusUseMs += amountMs;
+                }
             }
         }
         saveState();
@@ -102,13 +127,20 @@ function confirmAmountPicker() {
     closeAmountPicker();
 }
 
-function updateStoredBonusIndicator() {
-    const mins = Math.floor(appState.storedBonusMs / 60000);
+function updateStoredBonusIndicator(bonusType, el) {
+    if (!el) return;
+    const storedMs = bonusType === 'fasting' ? appState.storedFastingBonusMs : appState.storedEatingBonusMs;
+    const mins = Math.floor(storedMs / 60000);
     if (mins > 0) {
-        elStoredBonusIndicator.textContent = `+${formatMinutesBadge(mins)} stored`;
-        elStoredBonusIndicator.classList.remove('hidden');
-        elStoredBonusIndicator.classList.toggle('disabled', !canOpenAmountPicker('use'));
+        el.textContent = `+${formatMinutesBadge(mins)} stored`;
+        el.classList.remove('hidden');
+        el.classList.toggle('disabled', !canOpenAmountPicker('use', bonusType));
     } else {
-        elStoredBonusIndicator.classList.add('hidden');
+        el.classList.add('hidden');
     }
+}
+
+function updateStoredBonusIndicators() {
+    updateStoredBonusIndicator('fasting', elStoredFastingBonusIndicator);
+    updateStoredBonusIndicator('eating', elStoredEatingBonusIndicator);
 }

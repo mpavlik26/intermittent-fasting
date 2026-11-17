@@ -73,7 +73,7 @@ function calcSimulatedFast(firstMealMs, lastMealMs) {
     if (appState.currentState === STATES.POTENTIAL_EATING) {
         let fastingBonus = 0;
         if (appState.windowEndTime && firstMealMs > appState.windowEndTime) {
-            fastingBonus = Math.floor((firstMealMs - appState.windowEndTime) / BONUS_DIVISOR);
+            fastingBonus = firstMealMs - appState.windowEndTime;
         }
         effectiveEatingEnd = firstMealMs + DURATION_EATING_MS + fastingBonus;
     } else {
@@ -81,24 +81,23 @@ function calcSimulatedFast(firstMealMs, lastMealMs) {
     }
 
     const eatingBonus = lastMealMs < effectiveEatingEnd
-        ? Math.floor((effectiveEatingEnd - lastMealMs) / BONUS_DIVISOR)
+        ? effectiveEatingEnd - lastMealMs
         : 0;
 
     const fastStart = lastMealMs;
-    const fastEnd = lastMealMs + DURATION_FASTING_MS - eatingBonus + appState.prematureStartPenaltyMs;
+    const fastEnd = lastMealMs + DURATION_FASTING_MS - eatingBonus + appState.fastingPenaltyMs;
     return { fastStart, fastEnd, fastDurationMs: fastEnd - fastStart };
 }
 
 // US-13: Calculate the modeled eating window when in Fasting state.
 // firstMealMs = when user plans to eat after fasting ends (sliderStartMs = fasting window end).
+// US-20: delaying the first meal earns a Fasting bonus that shortens the *next* Fasting
+// window, not this modeled Eating window — exposed separately as nextFastShortenedByMs.
 function calcSimulatedEating(firstMealMs) {
-    let fastingBonus = 0;
-    if (firstMealMs > simState.sliderStartMs) {
-        fastingBonus = Math.floor((firstMealMs - simState.sliderStartMs) / BONUS_DIVISOR);
-    }
+    const nextFastShortenedByMs = Math.max(0, firstMealMs - simState.sliderStartMs);
     const eatStart = firstMealMs;
-    const eatEnd = firstMealMs + DURATION_EATING_MS + fastingBonus;
-    return { eatStart, eatEnd, eatDurationMs: eatEnd - eatStart };
+    const eatEnd = firstMealMs + DURATION_EATING_MS;
+    return { eatStart, eatEnd, eatDurationMs: eatEnd - eatStart, nextFastShortenedByMs };
 }
 
 function updateSimulatorOutput() {
@@ -118,15 +117,22 @@ function updateSimulatorOutput() {
     elSimRangeFill.style.right = `${fillRight}%`;
 
     if (appState.currentState === STATES.FASTING) {
-        const { eatStart, eatEnd, eatDurationMs } = calcSimulatedEating(firstMealMs);
+        const { eatStart, eatEnd, eatDurationMs, nextFastShortenedByMs } = calcSimulatedEating(firstMealMs);
         elSimFastStart.innerHTML = renderTime(eatStart);
         elSimFastEnd.innerHTML = renderTime(eatEnd);
         elSimFastDuration.textContent = formatSimDuration(eatDurationMs);
+        if (nextFastShortenedByMs > 0) {
+            elSimNextFastShortenedVal.textContent = formatSimDuration(nextFastShortenedByMs);
+            elSimNextFastShortened.classList.remove('hidden');
+        } else {
+            elSimNextFastShortened.classList.add('hidden');
+        }
     } else {
         const { fastStart, fastEnd, fastDurationMs } = calcSimulatedFast(firstMealMs, lastMealMs);
         elSimFastStart.innerHTML = renderTime(fastStart);
         elSimFastEnd.innerHTML = renderTime(fastEnd);
         elSimFastDuration.textContent = formatSimDuration(fastDurationMs);
+        elSimNextFastShortened.classList.add('hidden');
     }
 }
 
@@ -135,11 +141,7 @@ function updateSimulatorOutput() {
 function getMaxLastMealMins() {
     const firstMins = parseInt(elSliderFirstMeal.value);
     const firstMealMs = simState.sliderStartMs + firstMins * 60000;
-    let fastingBonus = 0;
-    if (appState.windowEndTime && firstMealMs > appState.windowEndTime) {
-        fastingBonus = Math.floor((firstMealMs - appState.windowEndTime) / BONUS_DIVISOR);
-    }
-    const maxLastMealMs = firstMealMs + DURATION_EATING_MS + fastingBonus;
+    const maxLastMealMs = firstMealMs + DURATION_EATING_MS;
     return Math.min(
         Math.floor((maxLastMealMs - simState.sliderStartMs) / 60000),
         parseInt(elSliderLastMeal.max)

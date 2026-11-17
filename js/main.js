@@ -78,10 +78,9 @@ function setupEventListeners() {
     document.getElementById('btn-close-simulator').addEventListener('click', closeSimulator);
     elSliderFirstMeal.addEventListener('input', () => {
         if (appState.currentState === STATES.FASTING) {
-            // US-13: Coupled sliders — eating start drives eating end
+            // US-13/US-20: Coupled sliders — eating start drives eating end (1:1, no bonus coupling)
             const t1 = parseInt(elSliderFirstMeal.value);
-            const fastingBonusMins = Math.max(0, Math.floor(t1 / 2));
-            elSliderLastMeal.value = Math.min(parseInt(elSliderLastMeal.max), t1 + 480 + fastingBonusMins);
+            elSliderLastMeal.value = Math.min(parseInt(elSliderLastMeal.max), t1 + 480);
         } else {
             if (parseInt(elSliderFirstMeal.value) > parseInt(elSliderLastMeal.value)) {
                 elSliderLastMeal.value = elSliderFirstMeal.value;
@@ -97,13 +96,11 @@ function setupEventListeners() {
     });
     elSliderLastMeal.addEventListener('input', () => {
         if (appState.currentState === STATES.FASTING) {
-            // US-13: Coupled sliders — desired eating end back-calculates eating start
+            // US-13/US-20: Coupled sliders — desired eating end back-calculates eating start (1:1)
             const t2 = parseInt(elSliderLastMeal.value);
-            const t1 = t2 <= 480 ? 0 : Math.max(0, Math.round((t2 - 480) * 2 / 3));
+            const t1 = Math.max(0, t2 - 480);
             elSliderFirstMeal.value = t1;
-            // Recompute actual t2 from t1 to correct any rounding
-            const fastingBonusMins = Math.max(0, Math.floor(t1 / 2));
-            elSliderLastMeal.value = Math.min(parseInt(elSliderLastMeal.max), t1 + 480 + fastingBonusMins);
+            elSliderLastMeal.value = Math.min(parseInt(elSliderLastMeal.max), t1 + 480);
         } else {
             if (parseInt(elSliderLastMeal.value) < parseInt(elSliderFirstMeal.value)) {
                 elSliderLastMeal.value = elSliderFirstMeal.value;
@@ -123,22 +120,34 @@ function setupEventListeners() {
         updateSimulatorOutput();
     });
 
-    // US-18: Store flow — click the applied bonus badge to move it into storage
-    elBonusBadge.addEventListener('click', () => {
-        // US-18.1: storing while Eating is only allowed while a safe amount remains
-        if (appState.currentState === STATES.EATING && appState.fastingBonusMs > 0 && canOpenAmountPicker('store')) {
-            openAmountPicker('store');
-        } else if (appState.currentState === STATES.FASTING && appState.eatingBonusMs > 0) {
-            openAmountPicker('store');
-        }
-    });
+    // US-20: Store flow — click a bonus badge to move it into its own storage pool
+    if (elFastingBonusBadge) {
+        elFastingBonusBadge.addEventListener('click', () => {
+            if (appState.currentState === STATES.FASTING && appState.fastingBonusMs > 0 && canOpenAmountPicker('store', 'fasting')) {
+                openAmountPicker('store', 'fasting');
+            }
+        });
+    }
+    if (elEatingBonusBadge) {
+        elEatingBonusBadge.addEventListener('click', () => {
+            if (appState.currentState === STATES.EATING && appState.eatingBonusMs > 0 && canOpenAmountPicker('store', 'eating')) {
+                openAmountPicker('store', 'eating');
+            }
+        });
+    }
 
-    // US-18: Use flow — click the stored-bonus header indicator to spend it
-    if (elStoredBonusIndicator) {
-        elStoredBonusIndicator.addEventListener('click', () => {
-            // US-18.1: using while Fasting is only allowed while a safe amount remains
-            if (appState.storedBonusMs > 0 && canOpenAmountPicker('use')) {
-                openAmountPicker('use');
+    // US-20: Use flow — click a stored-bonus header indicator to spend it
+    if (elStoredFastingBonusIndicator) {
+        elStoredFastingBonusIndicator.addEventListener('click', () => {
+            if (appState.storedFastingBonusMs > 0 && canOpenAmountPicker('use', 'fasting')) {
+                openAmountPicker('use', 'fasting');
+            }
+        });
+    }
+    if (elStoredEatingBonusIndicator) {
+        elStoredEatingBonusIndicator.addEventListener('click', () => {
+            if (appState.storedEatingBonusMs > 0 && canOpenAmountPicker('use', 'eating')) {
+                openAmountPicker('use', 'eating');
             }
         });
     }
