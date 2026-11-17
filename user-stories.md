@@ -71,3 +71,41 @@
         - the restarted Fasting window (18:00 to 7:00 the next day, 13 hours) is shortened only by the still-untouched 3-hour Fasting bonus - the new 2-hour Eating penalty does not affect it
         - the user starts eating at 8:00 (1 hour after the 7:00 Potential Eating window began), earning a fresh 1-hour Fasting bonus for the next Fasting window; this Eating window is a standard 8 hours shortened by the pending 2-hour Eating penalty, giving a 6-hour window from 8:00 to 14:00
         - the user finishes eating early at 12:00, so when the app transitions to Fasting at 14:00 it banks a fresh 2-hour Eating bonus for the next Eating window, and the new Fasting window (from 12:00, 16 hours shortened by the 1-hour Fasting bonus just earned, i.e. 15 hours) runs until 3:00 the next day
+    - US-21:
+      - As the user, I want to explicitly end my current Eating window instead of waiting for its end, so that when I know I will not eat anymore (typically in a long Eating window stretched by accumulated Eating bonus) the app immediately shows me as fasting
+        - the action is available only during an Eating window and is independent of logging the last meal
+        - its button is deliberately low-key (small, secondary style) - clearly less prominent than the Log Last Meal button, so it is not pressed by accident
+        - pressing it opens a dialog (instead of hold-to-confirm; the dialog is the safeguard) that states when the Eating window originally ends (E, rendered via `renderTime`) and offers 4 choices:
+          - "Last meal is now" - confirmed immediately by the click
+          - "Last logged meal at HH:MM" - offered only if a last meal has already been logged in this Eating window; the time is shown explicitly (via `renderTime`); confirmed immediately by the click
+          - "Different time" - reveals a time field and a Confirm button; the allowed range is from the already logged last meal (or from the Eating window start if none is logged) up to now; it behaves exactly as if the user had logged the last meal at that time (US-15) and then explicitly ended the Eating window
+          - "Cancel" - closes the dialog and leaves the Eating window as it is, which keeps running until E
+        - choosing "now" or "different time" while a last meal is already logged overwrites it with the chosen time, which therefore can never be earlier than the logged last meal
+        - from that moment the app behaves as if the Eating window had expired normally:
+          - the Fasting window starts at the chosen last meal time T (the Fasting start is therefore never the moment of the press unless the user chose "now")
+          - the Eating bonus is banked as (original Eating window end E - T), as for an early finish (US-4/US-20)
+          - if T is so far in the past that the resulting Fasting window has already ended, the app fast-forwards as it does for any expired window
+          - the Fasting bonus/penalty and stored-bonus reservations are applied to the new Fasting window exactly as in a normal transition
+          - the Windows History (US-10) records the Eating window as today, with its original planned end E
+      - As the user, I want a clear way back to eating if I change my mind after explicitly ending the Eating window
+        - while the resulting Fasting window runs and the current time is before E, the app explains how to do it, e.g. "You ended your Eating window early. Until HH:MM you can resume eating without penalty: open 'Break Fast Prematurely' and choose 'Option 1: Prolong Eating' ('Prolong & Start Fast')." (the time is rendered via `renderTime`)
+        - before E, the Break Fast dialog offers only Prolong Eating (no Premature Start), because the user is still within the bounds of the original Eating window
+          - there is no penalty; the Fasting window restarts from the prolonging time t; the Eating bonus is recalculated as E - t (the bonus banked by the explicit end is discarded)
+          - the dialog shows a 0m penalty and the recalculated Eating bonus
+        - at or after E, everything works exactly as if the Eating window had not been explicitly ended (US-7): Prolong Eating creates an Eating penalty of double the overshoot past E, deferred to the next Eating window, and discards the banked Eating bonus; Premature Start is offered as today
+        - US-15 retrospective logs landing inside such a Fasting window follow the same rule by their time: before E a penalty-free prolong, at or after E the existing penalty logic
+      - This story changes the behaviour of several previous stories - the following conflicts are identified and resolved as described above:
+        - US-7 (break-fast penalties): before the original Eating window end E of an explicitly ended Eating window, only Prolong Eating is offered, penalty-free, with the Eating bonus recalculated instead of discarded; from E on, unchanged
+        - US-4/US-20 (Eating bonus): an explicit end becomes another way of banking an Eating bonus, with the same E - Fasting start formula
+        - US-14 (hold-to-confirm): not used for the explicit-end action; its confirmation is the choice in the dialog, and the Log First/Last Meal buttons keep hold-to-confirm unchanged
+        - US-15 (retrospective log): the "different time" choice reuses the same last-meal logging as the retrospective log in an Eating window
+        - US-15 (retrospective log inside an active fast): reuses the restructured prolong handler, so its result depends on whether the logged time is before or at/after E
+      - Testing scenario (worked example):
+        - the user is in an Eating window running from 8:00 to 17:00 (E = 17:00) and at 12:00 presses the explicit-end button; the dialog shows that the window ends at 17:00 and, with no last meal logged, offers only "now", "different time" and "cancel"
+          - "cancel": nothing changes, the Eating window keeps running until 17:00
+          - "now": the Fasting window starts at 12:00, a 5-hour Eating bonus is banked (17:00 - 12:00) and the History records the Eating window 8:00-17:00
+          - "different time" 10:00: the Fasting window starts at 10:00 and a 7-hour Eating bonus is banked (17:00 - 10:00)
+          - if the user had logged the last meal at 11:20, the dialog additionally offers "Last logged meal at 11:20" and choosing it starts Fasting at 11:20 with a 5h40m Eating bonus; the "different time" range is then 11:20-12:00
+        - continuing with the "now" variant:
+        - at 15:00 the user opens Break Fast Prematurely and chooses Prolong Eating: no penalty, the Fasting window restarts from 15:00, and the Eating bonus is recalculated to 2 hours (17:00 - 15:00)
+        - alternatively, if the user only chooses Prolong Eating at 19:00, it works as before the explicit end: a 4-hour Eating penalty (double the 2-hour overshoot past 17:00) is deferred to the next Eating window, the Fasting window restarts from 19:00 and the banked Eating bonus is discarded

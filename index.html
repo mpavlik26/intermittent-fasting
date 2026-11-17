@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=11">
+    <link rel="stylesheet" href="styles.css?v=12">
     
     <!-- PWA Tags -->
     <link rel="manifest" href="manifest.json?v=6">
@@ -65,6 +65,11 @@
                 <div class="action-buttons" style="text-align: center; margin-top: 1.5rem;">
                     <button id="btn-first-meal" class="btn primary-btn">Log First Meal</button>
                     <button id="btn-last-meal" class="btn primary-btn hidden">Log Last Meal</button>
+                </div>
+
+                <!-- US-21: low-key explicit end of the Eating window (Eating state only) -->
+                <div class="end-eating-wrap">
+                    <button id="btn-end-eating" class="end-eating-link hidden">End eating window…</button>
                 </div>
 
                 <div class="badges-container">
@@ -157,10 +162,12 @@
                                 <p>Extends previous eating window from its original end to now.
                                     Total penalty: <strong id="break-prolong-penalty">0m</strong>.
                                     Fast will end at: <strong id="break-prolong-end">--:--</strong></p>
+                                <p id="break-prolong-bonus-note" class="hidden">Eating bonus is recalculated:
+                                    <strong id="break-prolong-bonus">0m</strong>.</p>
                                 <button id="btn-break-prolong" class="btn primary-btn btn-sm">Prolong & Start
                                     Fast</button>
                             </div>
-                            <div class="punishment-card">
+                            <div id="break-premature-card" class="punishment-card">
                                 <h4>Option 2: Premature Start</h4>
                                 <p>Starts a 100% standard 8h eating window now.
                                     Total penalty: <strong id="break-premature-penalty">0m</strong>.
@@ -345,6 +352,29 @@
         </div>
     </div>
 
+    <!-- US-21: Explicit end of the Eating window -->
+    <div id="end-eating-overlay" class="amount-picker-overlay hidden">
+        <div class="amount-picker-content">
+            <div class="simulator-header">
+                <h3 class="simulator-title">End Eating Window</h3>
+            </div>
+            <p id="end-eating-original" class="end-eating-text"></p>
+            <p class="end-eating-text">When was your last meal?</p>
+            <div class="end-eating-options">
+                <button id="end-eating-now" class="btn primary-btn">Last meal is now</button>
+                <button id="end-eating-logged" class="btn primary-btn hidden"></button>
+                <button id="end-eating-custom-toggle" class="btn secondary-btn">Different time</button>
+                <div id="end-eating-custom" class="end-eating-custom hidden">
+                    <input type="time" id="end-eating-time-input">
+                    <div id="end-eating-range" class="end-eating-text"></div>
+                    <div id="end-eating-error" class="end-eating-error hidden"></div>
+                    <button id="end-eating-custom-confirm" class="btn primary-btn">Confirm</button>
+                </div>
+                <button id="end-eating-cancel" class="btn secondary-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Templates -->
     <template id="manual-form-template">
         <div class="manual-session-section">
@@ -370,15 +400,16 @@
         </div>
     </template>
 
-    <script src="js/state.js?v=4"></script>
+    <script src="js/state.js?v=5"></script>
     <script src="js/time-utils.js?v=2"></script>
     <script src="js/history.js?v=3"></script>
-    <script src="js/transitions.js?v=3"></script>
+    <script src="js/transitions.js?v=4"></script>
     <script src="js/simulator.js?v=2"></script>
     <script src="js/bonus-storage.js?v=4"></script>
-    <script src="js/ui.js?v=5"></script>
+    <script src="js/end-eating.js?v=1"></script>
+    <script src="js/ui.js?v=6"></script>
     <script src="js/manual-session.js?v=2"></script>
-    <script src="js/main.js?v=3"></script>
+    <script src="js/main.js?v=4"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

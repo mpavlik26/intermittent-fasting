@@ -1370,3 +1370,74 @@ body {
 .amount-picker-preview.hidden {
     display: none;
 }
+
+/* --- US-21: Explicit end of the Eating window --- */
+.end-eating-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.75rem;
+}
+
+.end-eating-link {
+    background: none;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-decoration: underline;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.end-eating-link:hover {
+    opacity: 1;
+}
+
+.end-eating-link.hidden {
+    display: none;
+}
+
+.end-eating-text {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 0.5rem 0;
+    text-align: center;
+}
+
+.end-eating-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.end-eating-options .btn {
+    width: 100%;
+}
+
+.end-eating-options .btn.hidden,
+.end-eating-custom.hidden,
+.end-eating-error.hidden {
+    display: none;
+}
+
+.end-eating-custom {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.end-eating-custom input[type="time"] {
+    font-size: 1.1rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+}
+
+.end-eating-error {
+    color: #fca5a5;
+    font-size: 0.85rem;
+    text-align: center;
+}

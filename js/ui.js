@@ -1,3 +1,6 @@
+// US-21: whether the last updateUI() rendered the explicitly-ended-fast hint (null = not rendered yet)
+let explicitEndRendered = null;
+
 // --- Ticker ---
 function tick() {
     const now = getCurrentTime();
@@ -44,6 +47,21 @@ function tick() {
         elBreakProlongPenalty.textContent = formatMinutesBadge(Math.floor(predictedEatingPenalty / 60000));
         const prolongRestartedEnd = now + DURATION_FASTING_MS - appState.fastingBonusMs + appState.fastingPenaltyMs;
         elBreakProlongEnd.innerHTML = renderTime(prolongRestartedEnd);
+
+        // US-21: the "resume eating" hint / Option 2 card depend on now < E, which flips
+        // while the state stays FASTING — re-render once when that happens
+        if (isExplicitlyEndedFast() !== explicitEndRendered) {
+            updateUI();
+        }
+
+        // US-21: before E, prolonging is free and the Eating bonus is recalculated as E - now
+        if (elBreakProlongBonusNote) {
+            const beforeE = isExplicitlyEndedFast();
+            elBreakProlongBonusNote.classList.toggle('hidden', !beforeE);
+            if (beforeE) {
+                elBreakProlongBonus.textContent = formatMinutesBadge(Math.floor(getEatingBonusForTime(now) / 60000));
+            }
+        }
 
         // Prediction 2: Premature Start — the new Fasting penalty is deferred to the next
         // Fasting window (after the upcoming standard Eating window)
@@ -168,6 +186,7 @@ function updateUI() {
     elBtnFirstMeal.classList.add('hidden');
     elBtnLastMeal.classList.add('hidden');
     elBreakFastSection.classList.add('hidden');
+    if (elBtnEndEating) elBtnEndEating.classList.add('hidden'); // US-21
     elFastingBonusBadge.classList.add('hidden');
     elEatingBonusBadge.classList.add('hidden');
     elFastingPenaltyBadge.classList.add('hidden');
@@ -235,6 +254,7 @@ function updateUI() {
         // elStartTimeVal/elEndTimeVal now handled by tick() for dynamic US-9 updates
 
         elBtnLastMeal.classList.remove('hidden');
+        if (elBtnEndEating) elBtnEndEating.classList.remove('hidden'); // US-21
 
         elBtnLastMeal.classList.remove('logged');
         elBtnLastMeal.textContent = "Log Last Meal";
@@ -250,6 +270,21 @@ function updateUI() {
         elCurrentStateTitle.textContent = "Fasting Window";
         elStateDescription.textContent = "Time to let your body rest and digest.";
 
+        // US-21: Fasting was started by explicitly ending the Eating window before it ran out
+        // -> explain how to get back to eating (only possible until the original end E)
+        const explicitlyEnded = isExplicitlyEndedFast();
+        explicitEndRendered = explicitlyEnded;
+        if (explicitlyEnded) {
+            elStateDescription.innerHTML = 'Time to let your body rest and digest. ' +
+                '<span id="explicit-end-hint">Changed your mind? Until ' +
+                renderTime(appState.lastEatingWindowTargetMs) +
+                " you can go back to eating: open 'Break Fast Prematurely' and choose " +
+                "'Option 1: Prolong Eating' (Prolong &amp; Start Fast).</span>";
+        }
+        // Option 2 (start a new Eating window early) is only offered once the original Eating
+        // window would have ended; before that only prolonging is possible.
+        if (elBreakPrematureCard) elBreakPrematureCard.classList.toggle('hidden', explicitlyEnded);
+
         elTimerLabel.textContent = "Fasting Target Reached In";
         elTimerDisplay.classList.remove('hidden');
         elProgressBar.style.backgroundColor = 'var(--state-fasting)';
@@ -262,7 +297,7 @@ function updateUI() {
             elFastingBonusText.textContent = `-${formatMinutesBadge(bonusMins)} fasting bonus applied!`;
             elFastingBonusBadge.classList.remove('hidden');
             elFastingBonusBadge.classList.toggle('storable', canOpenAmountPicker('store', 'fasting')); // US-18: Click to move into storage
-            elStateDescription.textContent += ` Fast shortened by ${formatMinutesBadge(bonusMins)} because you finished eating earlier.`;
+            elStateDescription.insertAdjacentText('beforeend', ` Fast shortened by ${formatMinutesBadge(bonusMins)} because you finished eating earlier.`);
         } else {
             elFastingBonusBadge.classList.add('hidden');
             elFastingBonusBadge.classList.remove('storable');
