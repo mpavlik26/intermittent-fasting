@@ -91,6 +91,10 @@ function durationText(ms) {
     return formatMinutesBadge(Math.max(0, Math.floor(ms / MIN_MS)));
 }
 
+function bonusLabel(bonusType) {
+    return bonusType === 'fasting' ? 'Fasting' : 'Eating';
+}
+
 function previewLine(html) {
     return `<div>${html}</div>`;
 }
@@ -99,8 +103,8 @@ function previewLine(html) {
 function buildStorePreviewHtml(bonusType, amountMs) {
     const storedMs = bonusType === 'fasting' ? appState.storedFastingBonusMs : appState.storedEatingBonusMs;
     const newEndMs = bonusType === 'fasting' ? appState.windowEndTime + amountMs : appState.windowEndTime - amountMs;
-    return previewLine(`New end time: ${renderTime(newEndMs)}`)
-        + previewLine(`Stored after: ${durationText(storedMs + amountMs)}`);
+    return previewLine(`New end of the ${bonusLabel(bonusType)} window: ${renderTime(newEndMs)}`)
+        + previewLine(`Stored ${bonusLabel(bonusType)} after: ${durationText(storedMs + amountMs)}`);
 }
 
 // US-22: consequences of using amountMs of stored bonus, for the window the bonus lands in
@@ -112,7 +116,7 @@ function buildUsePreviewHtml(bonusType, amountMs) {
 
     if (bonusType === 'eating') {
         if (state === STATES.EATING) {
-            lines.push(`New end time: ${renderTime(appState.windowEndTime + amountMs)}`);
+            lines.push(`New end of the Eating window: ${renderTime(appState.windowEndTime + amountMs)}`);
         } else if (state === STATES.POTENTIAL_EATING) {
             const plan = planEatingWindow(now, getPotentialFastingBonusMs(now), { eatingMs: amountMs });
             lines.push(`Eating window: ${durationText(plan.endTime - now)}`);
@@ -125,7 +129,7 @@ function buildUsePreviewHtml(bonusType, amountMs) {
         }
     } else {
         if (state === STATES.FASTING) {
-            lines.push(`New end time: ${renderTime(appState.windowEndTime - amountMs)}`);
+            lines.push(`New end of the Fasting window: ${renderTime(appState.windowEndTime - amountMs)}`);
         } else if (state === STATES.EATING) {
             const lengthMs = DURATION_FASTING_MS - (appState.fastingBonusMs + appState.pendingFastingBonusUseMs + amountMs)
                 + appState.fastingPenaltyMs;
@@ -140,7 +144,7 @@ function buildUsePreviewHtml(bonusType, amountMs) {
             lines.push(`Eating window if you start eating now: ${renderTime(now)} to ${renderTime(plan.endTime)}`);
         }
     }
-    lines.push(`Stored after: ${durationText(storedAfterMs)}`);
+    lines.push(`Stored ${bonusLabel(bonusType)} after: ${durationText(storedAfterMs)}`);
     return lines.map(previewLine).join('');
 }
 
@@ -202,7 +206,7 @@ function updateStoredBonusIndicator(bonusType, el) {
     const storedMs = bonusType === 'fasting' ? appState.storedFastingBonusMs : appState.storedEatingBonusMs;
     const mins = Math.floor(storedMs / 60000);
     if (mins > 0) {
-        el.textContent = `+${formatMinutesBadge(mins)} stored`;
+        el.textContent = `Stored ${bonusType === 'fasting' ? 'Fasting' : 'Eating'}: +${formatMinutesBadge(mins)}`;
         el.classList.remove('hidden');
         el.classList.toggle('disabled', !canOpenAmountPicker('use', bonusType));
     } else {

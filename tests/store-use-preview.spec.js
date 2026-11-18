@@ -56,7 +56,7 @@ test('US-22 example: Eating 8–16, at 12:00 store 2h → ends 14:00, storage 2h
     await page.locator('#end-time-block').click();
     await expect(page.locator('#amount-picker-overlay')).toBeVisible();
     await openPicker(page, 'store', 'eating', 120);
-    await expectPreview(page, [`New end time: ${await rt(page, at(14))}`, 'Stored after: 2h']);
+    await expectPreview(page, [`New end of the Eating window: ${await rt(page, at(14))}`, 'Stored Eating after: 2h']);
 
     await page.locator('#amount-picker-confirm').click();
     const s = await readState(page);
@@ -82,7 +82,7 @@ test('US-22 example: Fasting 18–10, at 20:00 store 3h → ends 13:00; then use
 
     await page.locator('#end-time-block').click();
     await openPicker(page, 'store', 'fasting', 180);
-    await expectPreview(page, [`New end time: ${await rt(page, at(13))}`, 'Stored after: 3h']);
+    await expectPreview(page, [`New end of the Fasting window: ${await rt(page, at(13))}`, 'Stored Fasting after: 3h']);
     await page.locator('#amount-picker-confirm').click();
 
     let s = await readState(page);
@@ -93,7 +93,7 @@ test('US-22 example: Fasting 18–10, at 20:00 store 3h → ends 13:00; then use
     await expectPreview(page, [
         'Next Eating window: 10h',
         `Ends at ${await rt(page, at(23))} if started when this Fasting window ends (${await rt(page, at(13))})`,
-        'Stored after: 0m',
+        'Stored Eating after: 0m',
     ]);
     await page.locator('#amount-picker-confirm').click();
 
@@ -119,7 +119,7 @@ test('US-22 example: use 3h Fasting in Eating 8–16 at 12:00 → next Fasting 1
         'Next Fasting window: 13h',
         `After the Eating window: ${await rt(page, at(16))} to ${await rt(page, at(29))}`,
         `If you log your last meal now: ${await rt(page, at(12))} to ${await rt(page, at(25))}`,
-        'Stored after: 0m',
+        'Stored Fasting after: 0m',
     ]);
 });
 
@@ -137,7 +137,7 @@ test('US-22 example: use 3h Fasting in Potential at 10:00 → 13h Fasting, Eatin
     await expectPreview(page, [
         'Next Fasting window: 13h',
         `Eating window if you start eating now: ${await rt(page, at(10))} to ${await rt(page, at(18))}`,
-        'Stored after: 0m',
+        'Stored Fasting after: 0m',
     ]);
 });
 
@@ -152,7 +152,7 @@ test.describe('US-22 use previews, all window × kind combinations', () => {
         }));
         await page.goto('/');
         await openPicker(page, 'use', 'eating', 60);
-        await expectPreview(page, [`New end time: ${await rt(page, at(17))}`, 'Stored after: 0m']);
+        await expectPreview(page, [`New end of the Eating window: ${await rt(page, at(17))}`, 'Stored Eating after: 0m']);
     });
 
     test('Eating bonus in POTENTIAL → Eating window length + end if started now (incl. elapsed Fasting bonus)', async ({ page }) => {
@@ -166,7 +166,7 @@ test.describe('US-22 use previews, all window × kind combinations', () => {
         await expectPreview(page, [
             'Eating window: 9h',
             `Ends at ${await rt(page, at(21))} if you start eating now`,
-            'Stored after: 30m',
+            'Stored Eating after: 30m',
         ]);
     });
 
@@ -181,7 +181,7 @@ test.describe('US-22 use previews, all window × kind combinations', () => {
         await expectPreview(page, [
             'Next Eating window: 9h',
             `Ends at ${await rt(page, at(33))} if started when this Fasting window ends (${await rt(page, at(24))})`,
-            'Stored after: 0m',
+            'Stored Eating after: 0m',
         ]);
     });
 
@@ -199,7 +199,7 @@ test.describe('US-22 use previews, all window × kind combinations', () => {
             'Next Fasting window: 14h 30m',
             `After the Eating window: ${await rt(page, at(16))} to ${await rt(page, at(16) + 14.5 * HOUR)}`,
             `If you log your last meal now: ${await rt(page, at(12))} to ${await rt(page, at(12) + 14.5 * HOUR)}`,
-            'Stored after: 1h',
+            'Stored Fasting after: 1h',
         ]);
     });
 
@@ -215,7 +215,7 @@ test.describe('US-22 use previews, all window × kind combinations', () => {
         await expectPreview(page, [
             'Next Fasting window: 13h',
             `Eating window if you start eating now: ${await rt(page, at(12))} to ${await rt(page, at(20))}`,
-            'Stored after: 0m',
+            'Stored Fasting after: 0m',
         ]);
     });
 
@@ -227,7 +227,7 @@ test.describe('US-22 use previews, all window × kind combinations', () => {
         }));
         await page.goto('/');
         await openPicker(page, 'use', 'fasting', 60);
-        await expectPreview(page, [`New end time: ${await rt(page, at(23))}`, 'Stored after: 0m']);
+        await expectPreview(page, [`New end of the Fasting window: ${await rt(page, at(23))}`, 'Stored Fasting after: 0m']);
     });
 });
 

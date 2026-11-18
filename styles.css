@@ -593,6 +593,19 @@ body {
     cursor: pointer;
 }
 
+/* US-22: distinguish the two pools by the state colors */
+#stored-fasting-bonus-indicator {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.5);
+    color: var(--state-fasting);
+}
+
+#stored-eating-bonus-indicator {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.5);
+    color: var(--state-eating);
+}
+
 .stored-bonus-indicator.hidden {
     display: none;
 }

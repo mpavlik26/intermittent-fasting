@@ -252,12 +252,12 @@ test('US-20: the two stored-bonus indicators are independent and hidden at zero'
     await setAppState(page, makeEatingState({ storedFastingBonusMs: 25 * MIN }));
     await page.goto('/');
     await expect(page.locator('#stored-fasting-bonus-indicator')).not.toHaveClass(/hidden/);
-    await expect(page.locator('#stored-fasting-bonus-indicator')).toHaveText('+25m stored');
+    await expect(page.locator('#stored-fasting-bonus-indicator')).toHaveText('Stored Fasting: +25m');
     await expect(page.locator('#stored-eating-bonus-indicator')).toHaveClass(/hidden/);
 
     await setAppState(page, makeEatingState({ storedEatingBonusMs: 10 * MIN }));
     await page.goto('/');
-    await expect(page.locator('#stored-eating-bonus-indicator')).toHaveText('+10m stored');
+    await expect(page.locator('#stored-eating-bonus-indicator')).toHaveText('Stored Eating: +10m');
     await expect(page.locator('#stored-fasting-bonus-indicator')).toHaveClass(/hidden/);
 });
 
@@ -516,8 +516,7 @@ test('US-20: stored Eating indicator is never time-limited, even when the Fastin
     await expect(page.locator('#amount-picker-slider')).toHaveAttribute('max', '20');
 });
 
-const previewHtml = (page, timeMs, storedText, label = 'New end time') =>
-    page.evaluate(([t, s, l]) => `<div>${l}: ${renderTime(t)}</div><div>Stored after: ${s}</div>`, [timeMs, storedText, label]);
+const previewHtml = (page, timeMs, storedText, kind, windowKind = kind) =>    page.evaluate(([t, s, k, w]) => `<div>New end of the ${w} window: ${renderTime(t)}</div><div>Stored ${k} after: ${s}</div>`, [timeMs, storedText, kind, windowKind]);
 
 test('US-22: live preview for use-Fasting-while-Fasting shows the new end time and the remaining storage', async ({ page }) => {
     const now = Date.now();
@@ -530,7 +529,7 @@ test('US-22: live preview for use-Fasting-while-Fasting shows the new end time a
     await page.locator('#stored-fasting-bonus-indicator').click();
     await clickPlus(page, 15);
     await expect(page.locator('#amount-picker-preview')).not.toHaveClass(/hidden/);
-    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(await previewHtml(page, windowEndTime - 15 * MIN, '25m'));
+    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(await previewHtml(page, windowEndTime - 15 * MIN, '25m', 'Fasting'));
 });
 
 test('US-22: live preview for store (Fasting: end moves right, Eating: end moves left) and use-Eating-while-Eating', async ({ page }) => {
@@ -541,7 +540,7 @@ test('US-22: live preview for store (Fasting: end moves right, Eating: end moves
     await page.goto('/');
     await page.locator('#end-time-block').click();
     await clickPlus(page, 15);
-    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(await previewHtml(page, fastEnd + 15 * MIN, '25m'));
+    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(await previewHtml(page, fastEnd + 15 * MIN, '25m', 'Fasting'));
     await page.locator('#amount-picker-close').click();
 
     const eatEnd = now + 5 * HOUR;
@@ -549,12 +548,12 @@ test('US-22: live preview for store (Fasting: end moves right, Eating: end moves
     await page.goto('/');
     await page.locator('#end-time-block').click();
     await clickPlus(page, 15);
-    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(await previewHtml(page, eatEnd - 15 * MIN, '55m'));
+    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(await previewHtml(page, eatEnd - 15 * MIN, '55m', 'Eating'));
     await page.locator('#amount-picker-close').click();
 
     await page.locator('#stored-eating-bonus-indicator').click();
     await clickPlus(page, 15);
-    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(await previewHtml(page, eatEnd + 15 * MIN, '25m'));
+    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(await previewHtml(page, eatEnd + 15 * MIN, '25m', 'Eating'));
 });
 
 test('US-22: the preview is always shown, including at amount 0 (end time unchanged, storage unchanged)', async ({ page }) => {
@@ -564,7 +563,7 @@ test('US-22: the preview is always shown, including at amount 0 (end time unchan
     await page.goto('/');
     await page.locator('#stored-eating-bonus-indicator').click();
     await expect(page.locator('#amount-picker-preview')).not.toHaveClass(/hidden/);
-    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(await previewHtml(page, eatEnd, '15m'));
+    expect(await page.locator('#amount-picker-preview').innerHTML()).toBe(await previewHtml(page, eatEnd, '15m', 'Eating'));
 });
 
 // --- US-19: hours+minutes formatting once a stored/picker amount reaches 60 minutes ---
@@ -572,14 +571,14 @@ test('US-22: the preview is always shown, including at amount 0 (end time unchan
 test('US-19: header stored-bonus indicators show hours+minutes at a non-exact-hour amount', async ({ page }) => {
     await setAppState(page, makeEatingState({ storedFastingBonusMs: 90 * MIN, storedEatingBonusMs: 90 * MIN }));
     await page.goto('/');
-    await expect(page.locator('#stored-fasting-bonus-indicator')).toHaveText('+1h 30m stored');
-    await expect(page.locator('#stored-eating-bonus-indicator')).toHaveText('+1h 30m stored');
+    await expect(page.locator('#stored-fasting-bonus-indicator')).toHaveText('Stored Fasting: +1h 30m');
+    await expect(page.locator('#stored-eating-bonus-indicator')).toHaveText('Stored Eating: +1h 30m');
 });
 
 test('US-19: header stored-bonus indicator shows plain hours at an exact-hour multiple', async ({ page }) => {
     await setAppState(page, makeEatingState({ storedFastingBonusMs: 120 * MIN }));
     await page.goto('/');
-    await expect(page.locator('#stored-fasting-bonus-indicator')).toHaveText('+2h stored');
+    await expect(page.locator('#stored-fasting-bonus-indicator')).toHaveText('Stored Fasting: +2h');
 });
 
 test('US-19: amount picker slider value switches from raw minutes to hours+minutes across the 60m boundary', async ({ page }) => {
