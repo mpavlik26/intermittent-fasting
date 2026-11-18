@@ -257,6 +257,38 @@ body {
     align-items: flex-start;
 }
 
+/* US-22: end time doubles as the store entry point */
+.end-time-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+#end-time-block.store-enabled {
+    cursor: pointer;
+}
+
+.end-store-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    color: #ffd700;
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.end-store-icon.hidden {
+    display: none;
+}
+
+.end-store-icon.disabled {
+    opacity: 0.35;
+}
+
+#end-time-block.store-enabled:has(.end-store-icon.disabled) {
+    cursor: default;
+}
+
 .time-block:last-child {
     align-items: flex-end;
 }
@@ -548,10 +580,6 @@ body {
 
 .bonus-badge.hidden {
     display: none;
-}
-
-.bonus-badge.storable {
-    cursor: pointer;
 }
 
 .stored-bonus-indicator {
@@ -1365,6 +1393,17 @@ body {
     font-size: 0.85rem;
     color: var(--text-muted);
     margin: 0.75rem 0 0.5rem;
+}
+
+.amount-picker-hint {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0.5rem 0 0;
+}
+
+.amount-picker-hint.hidden {
+    display: none;
 }
 
 .amount-picker-preview.hidden {

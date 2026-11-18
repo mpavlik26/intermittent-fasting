@@ -60,6 +60,8 @@ Test files in `tests/`:
 | `simulator.spec.js` | US-12 simulator visibility, slider state, calculation correctness, constraints |
 | `hold-to-confirm.spec.js` | US-14 hold-to-confirm countdown on Log First/Last Meal buttons |
 | `explicit-end.spec.js` | US-21 explicit end of the Eating window (dialog), way back to eating before E |
+| `bonus-storage.spec.js` | US-18/20/22 stored bonus: store via end-time tap (Eating/Fasting window), use in any window, pending reservations, limits |
+| `store-use-preview.spec.js` | US-22 multi-line store/use previews (worked examples, exact HTML), pending Fasting cascade, reservations, Break Fast, explicit end |
 
 Time-based transitions are tested by calling `page.evaluate(() => { appState.timeOffsetMs += ms; tick(); })` — same mechanism as the in-app debug buttons but without needing to unlock the debug panel.
 

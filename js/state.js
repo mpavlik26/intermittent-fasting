@@ -1,5 +1,5 @@
 // --- Constants ---
-console.log("APP_VERSION: US-21-ver-1");
+console.log("APP_VERSION: US-22-ver-1");
 const STATES = {
     POTENTIAL_EATING: 'potential',
     EATING: 'eating',
@@ -145,6 +145,10 @@ const elAmountPickerMinus = document.getElementById('amount-picker-minus');
 const elAmountPickerPlus = document.getElementById('amount-picker-plus');
 const elAmountPickerConfirm = document.getElementById('amount-picker-confirm');
 const elAmountPickerPreview = document.getElementById('amount-picker-preview');
+const elAmountPickerHint = document.getElementById('amount-picker-hint');
+const elEndTimeBlock = document.getElementById('end-time-block');
+const elEndStoreIcon = document.getElementById('end-store-icon');
+const elEndStoreArrow = document.getElementById('end-store-arrow');
 
 // US-21: Explicit end of the Eating window
 const elBtnEndEating = document.getElementById('btn-end-eating');
