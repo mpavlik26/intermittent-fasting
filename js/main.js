@@ -128,20 +128,9 @@ function setupEventListeners() {
         updateSimulatorOutput();
     });
 
-    // US-20: Store flow — click a bonus badge to move it into its own storage pool
-    if (elFastingBonusBadge) {
-        elFastingBonusBadge.addEventListener('click', () => {
-            if (appState.currentState === STATES.FASTING && appState.fastingBonusMs > 0 && canOpenAmountPicker('store', 'fasting')) {
-                openAmountPicker('store', 'fasting');
-            }
-        });
-    }
-    if (elEatingBonusBadge) {
-        elEatingBonusBadge.addEventListener('click', () => {
-            if (appState.currentState === STATES.FASTING && appState.eatingBonusMs > 0 && canOpenAmountPicker('store', 'eating')) {
-                openAmountPicker('store', 'eating');
-            }
-        });
+    // US-22: Store flow — tap the window's end time (Eating: store Eating time, Fasting: store Fasting time)
+    if (elEndTimeBlock) {
+        elEndTimeBlock.addEventListener('click', openStoreForCurrentWindow);
     }
 
     // US-20: Use flow — click a stored-bonus header indicator to spend it

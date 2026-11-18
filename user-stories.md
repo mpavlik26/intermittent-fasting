@@ -109,3 +109,52 @@
         - continuing with the "now" variant:
         - at 15:00 the user opens Break Fast Prematurely and chooses Prolong Eating: no penalty, the Fasting window restarts from 15:00, and the Eating bonus is recalculated to 2 hours (17:00 - 15:00)
         - alternatively, if the user only chooses Prolong Eating at 19:00, it works as before the explicit end: a 4-hour Eating penalty (double the 2-hour overshoot past 17:00) is deferred to the next Eating window, the Fasting window restarts from 19:00 and the banked Eating bonus is discarded
+    - US-22:
+      - As the user, I want the stored-bonus mechanism (US-18/US-18.1/US-20) to be straightforward and predictable: I can move time into storage at any moment of an Eating or Fasting window, and I can use stored time at any moment in any window
+      - Moving time to storage (store)
+        - it is possible at any moment while I am in an Eating window or a Fasting window (i.e. always except in the Potential Eating window), whether or not a bonus currently exists
+        - what I can store depends on the window I am in, so the stored kind always corresponds to the current window:
+          - in an Eating window I store minutes into the stored Eating bonus; the Eating window is shortened by that amount (its end moves to the left)
+          - in a Fasting window I store minutes into the stored Fasting bonus; the Fasting window is prolonged by that amount (its end moves to the right)
+        - I am no longer limited to the bonus already applied to the current window - I can store any part of it, as follows:
+          - Eating window: the amount is limited to the time remaining until the window's end, so the end never moves into the past (US-18.1 continues to apply: the slider maximum is computed when the dialog opens, at confirm time only what is still safe is applied, silently; if nothing can be stored, the dialog does not open)
+          - Fasting window: the amount is limited to 16 hours per single store action; there is no overall limit, the Fasting window can be prolonged repeatedly. The dialog briefly mentions that repeating the action allows prolonging beyond 16 hours
+        - the entry point is the window's end time: tapping it opens the store dialog (slider + "+" / "-" buttons as in US-18, with a live preview of the resulting end time)
+          - next to the end time there is a small clickable storage icon with an arrow showing the direction in which the end will move: an arrow to the left in an Eating window (store Eating bonus), an arrow to the right in a Fasting window (store Fasting bonus)
+          - in the Potential Eating window the icon is not shown and the end time is not clickable
+          - the earlier entry point (tapping the bonus badge) is removed; the bonus badges are purely informational again
+        - the original Eating window end E (US-21 `lastEatingWindowTargetMs`) moves together with the Eating window end when Eating time is stored (symmetrically to how using stored Eating bonus in an Eating window already moves E), so the Eating bonus for an early finish stays E - T
+        - the banked Eating bonus waiting in a Fasting window for the next Eating window (US-20) is no longer storable; it is applied to the next Eating window as before
+        - time that was moved to storage stays in storage even if the Fasting window is later restarted by Break Fast -> Prolong Eating (US-7); the restarted window is a standard one (16 h - Fasting bonus + Fasting penalty)
+      - Using stored bonus (use)
+        - it is possible at any moment, in any window (Eating, Potential Eating and Fasting), for both kinds of stored bonus, up to the amount in the corresponding storage
+        - the bonus is applied to the current window if the window matches the kind of the stored bonus, otherwise it is reserved and applied to the nearest upcoming window of the matching kind (a reservation is applied exactly like an ordinary bonus of that kind, including the eager cascade skips from US-20: every full 16 h of Fasting bonus extends the Eating window by a further 8 h)
+          - stored Eating bonus: Eating window -> prolongs the current window immediately; Potential Eating or Fasting window -> reserved for the next Eating window
+          - stored Fasting bonus: Fasting window -> shortens the current window immediately (US-18.1 limit stays: not more than the time remaining until its end); Eating or Potential Eating window -> reserved for the next Fasting window
+        - a reservation cannot be cancelled; however, once it has been applied and I am really in that window, I can store the time again (see store above)
+        - the use dialog always shows the consequences of my choice live, both for the window the bonus lands in and for the stored values (the amount remaining in storage):
+          - stored Eating bonus:
+            - in an Eating window: the end of the Eating window with the bonus applied
+            - in a Potential Eating window: the length of the Eating window and when it would end if I started eating right now
+            - in a Fasting window: the length of the following Eating window and when it would end if I started eating right after the current Fasting window ends (the end time of the current Fasting window is stated)
+          - stored Fasting bonus:
+            - in a Fasting window: the end of the Fasting window with the bonus applied
+            - in an Eating window: the length of the following Fasting window and its start + end, both
+              - if the Fasting window starts only after the end of the Eating window, and
+              - if it starts immediately (i.e. if I log my last meal right now)
+            - in a Potential Eating window: the length of the following Fasting window and the Eating window (start + end) if I started eating right now
+          - all times in these dialogs are rendered via `renderTime` (US-9)
+      - This story changes the behaviour of several previous stories; the conflicts and their resolution:
+        - US-18 (store only the applied bonus by tapping the bonus badge): replaced - any part of the current window can be stored, entered via the window's end time; the badges are no longer clickable
+        - US-18.1 (limits): kept - Eating store is limited by the remaining time, Fasting use by the remaining time, the end time is never pushed into the past, the preview is always shown; only the limit of "store while Fasting" changes (at most 16 h per action instead of the applied bonus)
+        - US-20 (store keyed by the bonus type, banked Eating bonus storable from Fasting): store is now keyed by the current window (Eating window -> Eating bonus, Fasting window -> Fasting bonus); the banked Eating bonus is no longer storable
+        - US-20 (reservations): a reserved stored Fasting bonus now also takes part in the eager cascade skips
+        - US-21 (explicit end of the Eating window): E moves together with the Eating window end when Eating time is stored
+        - US-7 (Break Fast): restarting the Fasting window does not take stored time back
+      - Testing scenario (worked example):
+        - the user is in an Eating window from 8:00 to 16:00 and at 12:00 stores 2 hours into the Eating storage: the window now ends at 14:00 and the stored Eating bonus is 2 h; at 12:00 the user cannot store more than 2 hours (the remaining time to 14:00)
+        - the user is in a Fasting window from 18:00 to 10:00 and at 20:00 stores 3 hours into the Fasting storage: the window now ends at 13:00 and the stored Fasting bonus is 3 h; the dialog never offers more than 16 hours in one action, but the action can be repeated
+        - using the stored 2 h Eating bonus in that Fasting window: the dialog states that the following Eating window will be 10 h long (8 h + 2 h) and, if eating started at the Fasting window's end (13:00), would end at 23:00; the 2 h are reserved and the storage drops to 0
+        - using the stored 3 h Fasting bonus in an Eating window from 8:00 to 16:00 at 12:00: the dialog states that the following Fasting window will be 13 h long and shows it as 16:00 to 5:00 the next day if it starts after the Eating window, or as 12:00 to 1:00 the next day if the last meal is logged now; the 3 h are reserved
+        - using the stored 3 h Fasting bonus in a Potential Eating window at 10:00: the dialog states that the following Fasting window will be 13 h long and that the Eating window would be 10:00 to 18:00 if eating started now; the 3 h are reserved and applied when the next Fasting window starts
+        - a reserved 20 h of Fasting bonus applied at the start of an Eating window follows the US-20 cascade: the Eating window is extended by a further 8 h (one full 16 h) and the remaining 4 h stay as ordinary Fasting bonus

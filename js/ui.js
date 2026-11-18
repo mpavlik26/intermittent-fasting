@@ -111,6 +111,22 @@ function tick() {
         elStartTimeVal.innerHTML = renderTime(appState.windowStartTime);
         elEndTimeVal.innerHTML = renderTime(appState.windowEndTime);
     }
+
+    updateEndStoreIcon();
+}
+
+// US-22: storage icon + arrow next to the end time. Eating: arrow left (store Eating time),
+// Fasting: arrow right (store Fasting time), Potential: no icon, end time not clickable.
+function updateEndStoreIcon() {
+    if (!elEndStoreIcon) return;
+    const state = appState.currentState;
+    const active = state === STATES.EATING || state === STATES.FASTING;
+    elEndStoreIcon.classList.toggle('hidden', !active);
+    if (elEndTimeBlock) elEndTimeBlock.classList.toggle('store-enabled', active);
+    if (!active) return;
+    const bonusType = state === STATES.EATING ? 'eating' : 'fasting';
+    elEndStoreArrow.textContent = state === STATES.EATING ? '←' : '→';
+    elEndStoreIcon.classList.toggle('disabled', !canOpenAmountPicker('store', bonusType));
 }
 
 let clickCount = 0;
@@ -215,8 +231,7 @@ function updateUI() {
 
         // US-4/US-20 UI Feedback: Eating bonus extends THIS Eating window
         // (eatingBonusMs itself is already consumed/reset on entry, so the amount applied to
-        // this window lives in appliedEatingBonusMs; it is informational, not storable.)
-        elEatingBonusBadge.classList.remove('storable');
+        // this window lives in appliedEatingBonusMs; it is informational only.)
         if (appState.appliedEatingBonusMs > 0) {
             const bonusMins = Math.floor(appState.appliedEatingBonusMs / (60 * 1000));
             elEatingBonusText.textContent = `+${formatMinutesBadge(bonusMins)} eating bonus applied!`;
@@ -296,23 +311,19 @@ function updateUI() {
             const bonusMins = Math.floor(appState.fastingBonusMs / (60 * 1000));
             elFastingBonusText.textContent = `-${formatMinutesBadge(bonusMins)} fasting bonus applied!`;
             elFastingBonusBadge.classList.remove('hidden');
-            elFastingBonusBadge.classList.toggle('storable', canOpenAmountPicker('store', 'fasting')); // US-18: Click to move into storage
             elStateDescription.insertAdjacentText('beforeend', ` Fast shortened by ${formatMinutesBadge(bonusMins)} because you finished eating earlier.`);
         } else {
             elFastingBonusBadge.classList.add('hidden');
-            elFastingBonusBadge.classList.remove('storable');
         }
 
         // US-20: Eating bonus banked by finishing early, waiting for the next Eating window.
-        // Storable (US-18) — this is where "Move Eating Bonus to Storage" is reachable.
+        // US-22: informational only (no longer storable).
         if (appState.eatingBonusMs > 0) {
             const bonusMins = Math.floor(appState.eatingBonusMs / (60 * 1000));
             elEatingBonusText.textContent = `+${formatMinutesBadge(bonusMins)} eating bonus banked!`;
             elEatingBonusBadge.classList.remove('hidden');
-            elEatingBonusBadge.classList.toggle('storable', canOpenAmountPicker('store', 'eating'));
         } else {
             elEatingBonusBadge.classList.add('hidden');
-            elEatingBonusBadge.classList.remove('storable');
         }
 
         // US-8/US-20 Penalty Badge: Fasting penalty extended THIS Fasting window

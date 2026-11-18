@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=12">
+    <link rel="stylesheet" href="styles.css?v=14">
     
     <!-- PWA Tags -->
     <link rel="manifest" href="manifest.json?v=6">
@@ -55,9 +55,21 @@
                             <span class="time-block-label">Started</span>
                             <span class="time-block-value" id="start-time-val">--:--</span>
                         </div>
-                        <div class="time-block">
+                        <div class="time-block" id="end-time-block">
                             <span class="time-block-label">Ends</span>
-                            <span class="time-block-value" id="end-time-val">--:--</span>
+                            <span class="end-time-row">
+                                <span class="time-block-value" id="end-time-val">--:--</span>
+                                <!-- US-22: tap the end time to move time into storage -->
+                                <span id="end-store-icon" class="end-store-icon hidden" role="button" aria-label="Move time to storage">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 8l-9-5-9 5v8l9 5 9-5z"></path>
+                                        <polyline points="3 8 12 13 21 8"></polyline>
+                                        <line x1="12" y1="13" x2="12" y2="21"></line>
+                                    </svg>
+                                    <span id="end-store-arrow" class="end-store-arrow"></span>
+                                </span>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -347,6 +359,7 @@
                     </svg>
                 </button>
             </div>
+            <div id="amount-picker-hint" class="amount-picker-hint hidden"></div>
             <div id="amount-picker-preview" class="amount-picker-preview"></div>
             <button id="amount-picker-confirm" class="btn primary-btn">Confirm</button>
         </div>
@@ -400,16 +413,16 @@
         </div>
     </template>
 
-    <script src="js/state.js?v=5"></script>
+    <script src="js/state.js?v=6"></script>
     <script src="js/time-utils.js?v=2"></script>
     <script src="js/history.js?v=3"></script>
-    <script src="js/transitions.js?v=4"></script>
+    <script src="js/transitions.js?v=5"></script>
     <script src="js/simulator.js?v=2"></script>
-    <script src="js/bonus-storage.js?v=4"></script>
+    <script src="js/bonus-storage.js?v=6"></script>
     <script src="js/end-eating.js?v=1"></script>
-    <script src="js/ui.js?v=6"></script>
+    <script src="js/ui.js?v=7"></script>
     <script src="js/manual-session.js?v=2"></script>
-    <script src="js/main.js?v=4"></script>
+    <script src="js/main.js?v=5"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

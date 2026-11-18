@@ -257,6 +257,38 @@ body {
     align-items: flex-start;
 }
 
+/* US-22: end time doubles as the store entry point */
+.end-time-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+#end-time-block.store-enabled {
+    cursor: pointer;
+}
+
+.end-store-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    color: #ffd700;
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.end-store-icon.hidden {
+    display: none;
+}
+
+.end-store-icon.disabled {
+    opacity: 0.35;
+}
+
+#end-time-block.store-enabled:has(.end-store-icon.disabled) {
+    cursor: default;
+}
+
 .time-block:last-child {
     align-items: flex-end;
 }
@@ -550,10 +582,6 @@ body {
     display: none;
 }
 
-.bonus-badge.storable {
-    cursor: pointer;
-}
-
 .stored-bonus-indicator {
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.1));
     border: 1px solid rgba(255, 215, 0, 0.3);
@@ -563,6 +591,19 @@ body {
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
+}
+
+/* US-22: distinguish the two pools by the state colors */
+#stored-fasting-bonus-indicator {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.5);
+    color: var(--state-fasting);
+}
+
+#stored-eating-bonus-indicator {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.5);
+    color: var(--state-eating);
 }
 
 .stored-bonus-indicator.hidden {
@@ -1365,6 +1406,17 @@ body {
     font-size: 0.85rem;
     color: var(--text-muted);
     margin: 0.75rem 0 0.5rem;
+}
+
+.amount-picker-hint {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0.5rem 0 0;
+}
+
+.amount-picker-hint.hidden {
+    display: none;
 }
 
 .amount-picker-preview.hidden {

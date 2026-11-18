@@ -22,10 +22,14 @@ function cascadeSkip(amountMs, standardWindowMs) {
 // US-20: single source of truth for the Eating window that starts at startMs, given the
 // Fasting bonus that will be earned by starting then. Applies stored/banked Eating bonus,
 // Eating penalty, and eager cascade-skips (each full 16h of Fasting bonus adds 8h).
-function planEatingWindow(startMs, fastingBonusMs) {
-    const { skips, remainderMs } = cascadeSkip(fastingBonusMs, DURATION_FASTING_MS);
+// US-22: a reserved (pending) Fasting bonus joins the cascade; `extra` lets the stored-bonus
+// dialog preview "what if X were used" with the very same code as the real transition.
+function planEatingWindow(startMs, fastingBonusMs, extra = { eatingMs: 0, fastingMs: 0 }) {
+    const { skips, remainderMs } = cascadeSkip(
+        fastingBonusMs + appState.pendingFastingBonusUseMs + (extra.fastingMs || 0), DURATION_FASTING_MS);
     const endTime = startMs + DURATION_EATING_MS
         + appState.pendingEatingBonusUseMs
+        + (extra.eatingMs || 0)
         + appState.eatingBonusMs
         - appState.eatingPenaltyMs
         + skips * DURATION_EATING_MS;
@@ -63,6 +67,7 @@ function transitionToEating(retroTimeMs) {
     appState.eatingBonusMs = 0; // Applied, reset for new window
     appState.eatingPenaltyMs = 0; // Applied, reset for new window
     appState.pendingEatingBonusUseMs = 0; // US-18: Reservation consumed
+    appState.pendingFastingBonusUseMs = 0; // US-22: Reserved Fasting bonus consumed into the cascade
     appState.lastMealTime = null;
 
     // US-10: We don't add to history here, but we could if we wanted to track Potential windows.
