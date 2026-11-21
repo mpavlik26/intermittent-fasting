@@ -39,7 +39,7 @@ function tick() {
         }
 
         // US-7/US-20 Real-time predictions for Break Fast options
-        const originalEatingEnd = appState.lastEatingWindowTargetMs;
+        const originalEatingEnd = appState.lastEatingWindowTargetMs ?? appState.windowStartTime; // null-safe: no E → no overshoot
 
         // Prediction 1: Prolonging — the new Eating penalty is deferred to the next Eating
         // window; it does NOT extend this restarted Fasting window

@@ -208,3 +208,49 @@ test('manual Fasting window: E is the fasting start, so retro prolonging adds no
     expect(st.eatingPenaltyMs).toBe(2 * 30 * MIN);
     expect(st.windowEndTime).toBe(retro + DURATION_FASTING_MS);
 });
+
+// Potential window (manual or fresh): "Log last meal" starts a Fasting window that follows no Eating window of its
+// own, so E must be the last meal — otherwise the Prolong penalty/badge was 2 × (now − null) ≈ 1 994 736 h.
+for (const [label, setup] of [
+    ['manual Potential', (page) => page.evaluate(() => manualSetWindow('potential', Date.now() - 2 * 3600000, null))],
+    ['fresh Potential', async () => {}],
+]) {
+    test(`${label}: Log last meal → Fasting with E = last meal, sane Prolong badge and penalty`, async ({ page }) => {
+        await setAppState(page, makePotentialState());
+        await page.goto('/');
+        await setup(page);
+
+        const lastMeal = await page.evaluate(() => {
+            const t = Date.now() - 10 * 60000;
+            logLastMeal(t);
+            tick();
+            return t;
+        });
+        const st = await page.evaluate(() => ({ ...appState }));
+        expect(st.currentState).toBe('fasting');
+        expect(st.windowStartTime).toBe(lastMeal);
+        expect(st.lastEatingWindowTargetMs).toBe(lastMeal);
+        expect(st.eatingBonusMs).toBe(0);
+
+        // Prolong badge: 2 × ~10 min = ~20 min (not thousands of hours)
+        const badge = await page.evaluate(() => elBreakProlongPenalty.textContent);
+        expect(badge).toMatch(/^(19|20|21)m$/);
+
+        await page.evaluate(() => prolongEatingAndStartFast());
+        const after = await page.evaluate(() => ({ ...appState }));
+        expect(after.currentState).toBe('fasting');
+        expect(after.eatingPenaltyMs).toBeGreaterThan(19 * MIN);
+        expect(after.eatingPenaltyMs).toBeLessThan(21 * MIN);
+        expect(after.windowEndTime - after.windowStartTime).toBe(DURATION_FASTING_MS);
+    });
+}
+
+test('Fasting state saved without E (null): prolong is null-safe (no overshoot instead of a huge penalty)', async ({ page }) => {
+    const now = Date.now();
+    await setAppState(page, { ...makeFastingState(), lastEatingWindowTargetMs: null });
+    await page.goto('/');
+    await page.evaluate(() => { tick(); prolongEatingAndStartFast(); });
+    const st = await page.evaluate(() => ({ ...appState }));
+    expect(st.eatingPenaltyMs).toBeLessThan(DURATION_EATING_MS);
+    expect(st.windowEndTime - st.windowStartTime).toBe(DURATION_FASTING_MS);
+});
