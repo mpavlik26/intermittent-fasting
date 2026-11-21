@@ -41,6 +41,18 @@ test.describe('stored bonus section in the manual form', () => {
         await expect(confirm(page)).toBeEnabled();
     });
 
+    test('step buttons are ordered hours-left, minutes-right in both groups (like hh:mm)', async ({ page }) => {
+        await openForm(page);
+        for (const type of ['eating', 'fasting']) {
+            const labels = await page.locator(`${FORM} .manual-stored-step[data-bonus="${type}"]`).allTextContents();
+            expect(labels).toEqual(['−1h', '−1m', '+1h', '+1m']);
+            // The input sits between the minus and plus groups
+            const order = await page.locator(`${FORM} .manual-stored-row[data-bonus="${type}"] .manual-stored-controls > *`)
+                .evaluateAll(els => els.map(e => e.tagName === 'INPUT' ? 'input' : e.textContent));
+            expect(order).toEqual(['−1h', '−1m', 'input', '+1h', '+1m']);
+        }
+    });
+
     test('initial state shows current values and pre-filled fields', async ({ page }) => {
         await openForm(page);
         await expect(current(page, 'eating')).toHaveText('1h 30m');
