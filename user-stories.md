@@ -158,3 +158,28 @@
         - using the stored 3 h Fasting bonus in an Eating window from 8:00 to 16:00 at 12:00: the dialog states that the following Fasting window will be 13 h long and shows it as 16:00 to 5:00 the next day if it starts after the Eating window, or as 12:00 to 1:00 the next day if the last meal is logged now; the 3 h are reserved
         - using the stored 3 h Fasting bonus in a Potential Eating window at 10:00: the dialog states that the following Fasting window will be 13 h long and that the Eating window would be 10:00 to 18:00 if eating started now; the 3 h are reserved and applied when the next Fasting window starts
         - a reserved 20 h of Fasting bonus applied at the start of an Eating window follows the US-20 cascade: the Eating window is extended by a further 8 h (one full 16 h) and the remaining 4 h stay as ordinary Fasting bonus
+    - US-23:
+      - As the user, I sometimes need to set the stored bonuses by hand, next to setting a window manually (US-11) - e.g. after reinstalling the app, on a new device or to correct a mistake
+      - Scope: only the stored bonuses (US-18/US-20/US-22) - the stored Eating bonus and the stored Fasting bonus. Penalties are not stored, so setting them is out of scope for now
+      - Where: in the manual session form (US-11), i.e. both in the collapsible "manual control" section and in the initial setup overlay, which share the same form
+        - below the existing "Apply Settings" button (window setup) there is a separate inline section for the stored bonuses; it is part of the form, not a separate dialog
+        - the section has one row for the stored Eating bonus and one row for the stored Fasting bonus, both always shown
+        - a separate button below the rows applies the stored bonuses; it is independent of "Apply Settings", so the window and the stored bonuses can be set separately, in any order
+      - Each row
+        - shows the current stored value (what is in `appState` right now) and a field with the new value, pre-filled with the current value, so the user can start from it
+        - the new value is edited either by typing it into the text field (hours and minutes), or with the - / + buttons, which add or take away both minutes and whole hours (separate buttons for the hour step and for the minute step)
+        - there is no upper limit
+        - the value is never allowed to go below 0: the - buttons stop at 0, and a typed value that is negative or not a valid duration is not applied (the field is marked and the apply button is disabled for as long as any row is invalid)
+        - values are whole minutes (as everywhere in the stored-bonus mechanism, US-18.1)
+      - Applying
+        - the new values are written to the storage only when the apply button is pressed; leaving the form or editing the fields without pressing it changes nothing
+        - one press sets both rows at once; an unchanged row stays as it is
+        - the stored bonuses are only the storages - the setting has no effect on the current window, on its end, on the live Fasting/Eating bonuses and penalties, on the banked Eating bonus (US-20) or on reservations already made by using stored time (US-22); the current-value display and the "Stored ..." indicators in the main view are updated immediately
+        - the form stays open after applying and shows the new values as the current ones
+        - "Apply Settings" (window setup) does not touch the stored bonuses and applying the stored bonuses does not touch the window
+      - This story changes no behaviour of previous stories; it extends US-11 (manual control) with the stored bonuses of US-18/US-20/US-22
+      - Testing scenario (worked example):
+        - the stored Eating bonus is 1 h 30 m and the stored Fasting bonus is 0; the user opens manual control: the Eating row shows the current 1h 30m, the Fasting row 0m
+        - the user presses "+ hour" twice on Fasting and "- minute" 15 times on Eating, so the new values are Fasting 2h and Eating 1h 15m; nothing is stored yet - the main view still shows only Eating 1h 30m; after the apply button is pressed the main view shows "Stored Eating: +1h 15m" and "Stored Fasting: +2h"
+        - from Fasting 2h the user presses "- hour" three times: the value stops at 0 and cannot become negative; typing "-1:00" into the field marks it invalid and disables the apply button
+        - the user is in an Eating window ending at 16:00 with a reservation of 1 h of stored Fasting bonus already made: after setting the stored Fasting bonus to 5 h the window, its end 16:00 and the reservation of 1 h are unchanged; only the storage shows 5 h
