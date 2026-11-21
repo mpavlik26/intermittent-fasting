@@ -5,6 +5,7 @@ const {
     makeFastingState,
     makePotentialState,
     setAppState,
+    advanceTime,
 } = require('./helpers');
 
 test('setup overlay shown when no saved state', async ({ page }) => {
@@ -87,4 +88,123 @@ test('session applied via manual control sets isManualSession flag', async ({ pa
 
     const isManual = await page.evaluate(() => appState.isManualSession);
     expect(isManual).toBe(true);
+});
+
+// --- Bugfix: manually set Eating window must behave like a naturally started one ---
+const MIN = 60 * 1000;
+const HOUR = 60 * MIN;
+const DURATION_EATING_MS = 8 * HOUR;
+const DURATION_FASTING_MS = 16 * HOUR;
+
+// Manually sets an Eating window that started 2h ago and ends 6h from now (page already loaded).
+async function manualEating(page) {
+    return page.evaluate(() => {
+        const now = Date.now();
+        const s = now - 2 * 3600000;
+        const e = now + 6 * 3600000;
+        manualSetWindow('eating', s, e);
+        return { s, e };
+    });
+}
+
+test.describe('manual Eating window', () => {
+    test.beforeEach(async ({ page }) => {
+        await setAppState(page, makePotentialState());
+        await page.goto('/');
+    });
+
+    test('has no logged last meal and E equals the window end', async ({ page }) => {
+        const { e } = await manualEating(page);
+        const s = await page.evaluate(() => ({ ...appState }));
+        expect(s.lastMealTime).toBeNull();
+        expect(s.lastEatingWindowTargetMs).toBe(e);
+    });
+
+    test('no last meal logged → Fasting starts at window end and Eating window is recorded in history', async ({ page }) => {
+        const { s, e } = await manualEating(page);
+        await advanceTime(page, 6 * HOUR + MIN);
+
+        const st = await page.evaluate(() => ({ ...appState }));
+        expect(st.currentState).toBe('fasting');
+        expect(st.windowStartTime).toBe(e);
+        expect(st.windowEndTime).toBe(e + DURATION_FASTING_MS);
+        expect(st.eatingBonusMs).toBe(0);
+
+        expect(st.history).toHaveLength(1);
+        expect(st.history[0]).toMatchObject({ type: 'eating', startTime: s, endTime: e, isManual: true });
+    });
+
+    test('last meal logged → Fasting starts at last meal, Eating bonus banked, window recorded in history', async ({ page }) => {
+        const { s, e } = await manualEating(page);
+        const lastMeal = await page.evaluate(() => {
+            const t = Date.now() - 30 * 60000;
+            logLastMeal(t);
+            return t;
+        });
+        await advanceTime(page, 6 * HOUR + MIN);
+
+        const st = await page.evaluate(() => ({ ...appState }));
+        expect(st.currentState).toBe('fasting');
+        expect(st.windowStartTime).toBe(lastMeal);
+        expect(st.windowEndTime).toBe(lastMeal + DURATION_FASTING_MS);
+        expect(st.eatingBonusMs).toBe(e - lastMeal);
+
+        expect(st.history).toHaveLength(1);
+        expect(st.history[0]).toMatchObject({ type: 'eating', startTime: s, endTime: e, isManual: true });
+    });
+
+    test('retro last meal logged inside the following Fasting window gives a sane Fasting window (no huge penalty)', async ({ page }) => {
+        const { e } = await manualEating(page);
+        const lastMeal = await page.evaluate(() => {
+            const t = Date.now() - 30 * 60000;
+            logLastMeal(t);
+            return t;
+        });
+        await advanceTime(page, 6 * HOUR + MIN);
+
+        // Retro "last meal" 20 min after the logged one, i.e. still before E (US-21 way back)
+        const retro = lastMeal + 20 * MIN;
+        await page.evaluate((t) => prolongEatingAndStartFast(t), retro);
+
+        const st = await page.evaluate(() => ({ ...appState }));
+        expect(st.currentState).toBe('fasting');
+        expect(st.windowStartTime).toBe(retro);
+        expect(st.eatingPenaltyMs).toBe(0);
+        expect(st.windowEndTime).toBe(retro + DURATION_FASTING_MS);
+        expect(st.eatingBonusMs).toBe(e - retro);
+    });
+
+    test('retro last meal logged after the no-last-meal Fasting start gives a sane Fasting window', async ({ page }) => {
+        const { e } = await manualEating(page);
+        await advanceTime(page, 6 * HOUR + 10 * MIN);
+
+        // Retro last meal inside the Eating window, earlier than the Fasting window start
+        const retro = e - 100 * MIN;
+        await page.evaluate((t) => logLastMeal(t), retro);
+
+        const st = await page.evaluate(() => ({ ...appState }));
+        expect(st.currentState).toBe('fasting');
+        expect(st.windowStartTime).toBe(retro);
+        expect(st.windowEndTime).toBe(retro + DURATION_FASTING_MS);
+        expect(st.eatingBonusMs).toBe(100 * MIN);
+    });
+});
+
+test('manual Fasting window: E is the fasting start, so retro prolonging adds no huge penalty', async ({ page }) => {
+    await setAppState(page, makePotentialState());
+    await page.goto('/');
+    const start = await page.evaluate(() => {
+        const s = Date.now() - 2 * 3600000;
+        manualSetWindow('fasting', s, s + 16 * 3600000);
+        return s;
+    });
+    const st0 = await page.evaluate(() => ({ ...appState }));
+    expect(st0.lastMealTime).toBe(start);
+    expect(st0.lastEatingWindowTargetMs).toBe(start);
+
+    const retro = start + 30 * MIN;
+    await page.evaluate((t) => prolongEatingAndStartFast(t), retro);
+    const st = await page.evaluate(() => ({ ...appState }));
+    expect(st.eatingPenaltyMs).toBe(2 * 30 * MIN);
+    expect(st.windowEndTime).toBe(retro + DURATION_FASTING_MS);
 });

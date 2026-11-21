@@ -129,7 +129,16 @@ function manualSetWindow(type, startTimeMs, endTimeMs) {
     appState.currentState = type;
     appState.windowStartTime = startTimeMs;
     appState.windowEndTime = (type === STATES.POTENTIAL_EATING) ? startTimeMs : endTimeMs;
-    appState.lastMealTime = (type !== STATES.POTENTIAL_EATING) ? startTimeMs : null;
+    // "Last meal" is only known for a manually set Fasting window (it starts at the last meal).
+    // A manually set Eating window has no logged last meal yet — if none is logged, the last meal
+    // counts as being at the window's end, like in a naturally started Eating window.
+    appState.lastMealTime = (type === STATES.FASTING) ? startTimeMs : null;
+    // E (target end of the Eating window): needed by history recording (Eating → Fasting), the Eating
+    // bonus and the retroactive break-fast penalties. For Eating it is the window end; for a manual
+    // Fasting window the preceding Eating window is considered to have ended with the last meal.
+    if (type === STATES.EATING) appState.lastEatingWindowTargetMs = endTimeMs;
+    else if (type === STATES.FASTING) appState.lastEatingWindowTargetMs = startTimeMs;
+    else appState.lastEatingWindowTargetMs = null;
     appState.isManualSession = true;
 
     appState.fastingBonusMs = 0;
