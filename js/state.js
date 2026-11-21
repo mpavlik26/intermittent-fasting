@@ -1,5 +1,5 @@
 // --- Constants ---
-console.log("APP_VERSION: US-23-ver-2");
+console.log("APP_VERSION: US-23-ver-3");
 const STATES = {
     POTENTIAL_EATING: 'potential',
     EATING: 'eating',

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fasting-tracker-US-23-ver-2';
+const CACHE_NAME = 'fasting-tracker-US-23-ver-3';
 const ASSETS = [
   './',
   './index.html',

@@ -53,6 +53,13 @@ test.describe('stored bonus section in the manual form', () => {
         }
     });
 
+    test('fields use the full text keyboard on mobile (numeric keypad has no colon)', async ({ page }) => {
+        await openForm(page);
+        for (const type of ['eating', 'fasting']) {
+            await expect(input(page, type)).toHaveAttribute('inputmode', 'text');
+        }
+    });
+
     test('initial state shows current values and pre-filled fields', async ({ page }) => {
         await openForm(page);
         await expect(current(page, 'eating')).toHaveText('1h 30m');
