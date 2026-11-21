@@ -183,3 +183,63 @@
         - the user presses "+ hour" twice on Fasting and "- minute" 15 times on Eating, so the new values are Fasting 2h and Eating 1h 15m; nothing is stored yet - the main view still shows only Eating 1h 30m; after the apply button is pressed the main view shows "Stored Eating: +1h 15m" and "Stored Fasting: +2h"
         - from Fasting 2h the user presses "- hour" three times: the value stops at 0 and cannot become negative; typing "-1:00" into the field marks it invalid and disables the apply button
         - the user is in an Eating window ending at 16:00 with a reservation of 1 h of stored Fasting bonus already made: after setting the stored Fasting bonus to 5 h the window, its end 16:00 and the reservation of 1 h are unchanged; only the storage shows 5 h
+    - US-24:
+      - As the user, I do not want to pay a penalty for breaking a Fasting window while I still have a sufficient stored bonus (US-18/US-22) that would have prevented it had I used it in time - the matching stored bonus is used automatically, to the maximum, and the penalty is only charged for what the storage could not cover
+      - Scope: both ways of breaking a fast (US-7), including their retrospective variants (US-15), which reuse the same handlers
+        - Prolong Eating ("Option 1"): the overshoot past the original Eating window end E is covered by the stored Eating bonus
+          - had the user used the stored Eating bonus in time, the Eating window would have ended later by that amount and the overshoot would not exist - so the stored Eating bonus covers the overshoot 1:1
+          - the amount used is the smaller of the stored Eating bonus and the overshoot (t - E, where t is the prolonging time); it is taken out of the stored Eating bonus
+          - the Eating penalty is the existing multiplier (US-17, double) of only the part of the overshoot that the storage did not cover, so it is zero if the storage covered the whole overshoot; the penalty stays deferred to the nearest upcoming Eating window and the existing eager cascade skip (US-20) applies to it unchanged
+          - the amount used counts as if the Eating window had really been extended by it: the original Eating window end E (US-21 `lastEatingWindowTargetMs`) moves to E + amount used, so prolonging again within the same Fasting window measures the overshoot from the moved end and only the still stored remainder can be used
+          - the rest works as in US-7/US-21: the Fasting window restarts from t, the Eating bonus banked by the earlier natural end is discarded; before E prolonging stays free (US-21), nothing is taken from the storage there
+        - Premature start ("Option 2"): the remaining time of the Fasting window is covered by the stored Fasting bonus
+          - had the user used the stored Fasting bonus in time, the Fasting window would have ended earlier by that amount and the remaining time would be shorter - so the stored Fasting bonus covers the remaining time 1:1
+          - the amount used is the smaller of the stored Fasting bonus and the remaining time of the Fasting window (its end - the starting time t); it is taken out of the stored Fasting bonus (the US-18.1 limit of using Fasting bonus - never more than the time remaining until the window's end - is therefore kept)
+          - the Fasting penalty is the existing multiplier (US-17, double) of only the part of the remaining time that the storage did not cover, so it is zero if the storage covered all of it; the penalty stays deferred to the nearest upcoming Fasting window
+          - the new Eating window is the standard one, as in US-7
+      - Only the matching kind of stored bonus is used: stored Eating bonus covers the Eating penalty of Prolong Eating, stored Fasting bonus covers the Fasting penalty of Premature start; the other storage is not touched
+      - It is automatic - there is no way to keep the storage and pay the penalty instead
+        - an empty matching storage (or a zero overshoot/remaining time) changes nothing against US-7
+        - bonuses and penalties already applied to windows, the banked Eating bonus (US-20) and reservations already made by using stored time (US-22) are not touched - only what is still in the storage is used
+      - Informing the user
+        - the Break Fast dialog (US-7) shows live, for each of the two options, how much of the stored bonus will be used to cover the penalty and how much remains in the storage; the penalty shown there is already the reduced one (the part not covered by the storage), and so are the times derived from it (e.g. the Premature start interval); the information is not shown when nothing would be used
+        - a retrospective log (US-15) has no dialog, so after it is applied a short notice states how much of the stored bonus was used and how much penalty (if any) remained
+      - The Windows History (US-10) is unchanged - windows are recorded as today and the used stored bonus is not recorded there
+      - This story changes the behaviour of several previous stories - the following conflicts are identified and resolved as described above:
+        - US-7 (break-fast penalties): the penalties are computed only from the part not covered by the stored bonus
+        - US-17 (penalty multipliers): the ×2 multipliers are unchanged, they apply to the uncovered part only
+        - US-18/US-22 (stored bonus): besides being used by the user's explicit "Use Stored Bonus", the storage is also used automatically by breaking a fast; reservations stay as they are
+        - US-15 (retrospective log inside an active fast): reuses the same handlers, so it gets the same automatic use of the storage, with a notice instead of a dialog
+        - US-21 (explicit end of the Eating window): before E nothing changes (no penalty, no storage used); at or after E the moved E (E + amount used) is used for further prolonging
+      - Testing scenario (worked example):
+        - Prolong Eating: the user's Eating window ran from 8:00 to 17:00 (E = 17:00), the stored Eating bonus is 2 h and the user is in the following Fasting window; at 20:00 the user chooses Prolong Eating (overshoot 3 h)
+          - the dialog shows that 2 h of the stored Eating bonus will be used (0 h remaining in storage) and the Eating penalty is 2 h (double the uncovered 1 h), instead of 6 h without the storage
+          - after confirming, the storage is 0, the Eating penalty of 2 h waits for the next Eating window, E is 19:00 and the Fasting window restarts from 20:00
+          - had the stored Eating bonus been 5 h, 3 h would be used (2 h remain in storage) and there would be no penalty
+          - had the user chosen Prolong Eating at exactly 17:00 (overshoot 0) or at 16:30 after an explicit end (before E), nothing would be taken from the storage
+        - Premature start: the Fasting window runs from 18:00 to 10:00 and the stored Fasting bonus is 3 h; at 4:00 the user starts eating prematurely (remaining 6 h)
+          - the dialog shows that 3 h of the stored Fasting bonus will be used (0 h remaining) and the Fasting penalty is 6 h (double the uncovered 3 h), instead of 12 h without the storage
+          - had the stored Fasting bonus been 8 h, 6 h would be used (2 h remain in storage) and there would be no penalty
+        - the same logic is applied to a retrospective log landing inside the active fast, followed by the notice
+    - US-25:
+      - As the user, I want to see at all times which bonuses and penalties are banked for the nearest upcoming window of the matching kind (US-20), and I want the simulator to count them - today e.g. after Prolong Eating I land in a Fasting window and cannot see that the next Eating window will be shorter by a penalty, and the simulated Eating window ignores that penalty
+      - Banked amounts - what is deferred to the next window of its kind and is not yet applied to any window
+        - Eating bonus (lengthens the next Eating window), Eating penalty (shortens the next Eating window), Fasting bonus (shortens the next Fasting window), Fasting penalty (extends the next Fasting window)
+        - the amounts already applied to the current window keep their existing "applied" badges (US-20) unchanged
+      - Display
+        - each banked amount that is greater than 0 is shown in every state (Potential Eating, Eating and Fasting) as a "banked" badge, in the same style as the existing badges - so a penalty or bonus banked for the next window is visible in the very window in which it was earned
+        - the text states the effect and the target window, e.g. "-2h penalty banked for next Eating window", "+1h eating bonus banked", "+2h penalty banked for next Fasting window", "-1h fasting bonus banked"; a banked amount of 0 shows no badge
+        - a "banked" badge never duplicates an "applied" badge of the same kind in the same state - the applied badge of the current window and the banked badge for the next window of the same kind are two different pieces of information and are both shown if both are non-zero
+        - the banked Eating bonus already shown in the Fasting window (US-20) and the Fasting bonus "pending reward" shown in the Potential Eating window (US-3/US-20) are kept, only unified with the new wording and shown in the other states as well
+      - Modeling - the Eating window that the simulator and the forecasts predict
+        - the simulator (US-12/US-13) and the modeled first meal of the Potential Eating window use the same calculation as the real transition to the Eating window (US-20): the standard 8 h + the banked Eating bonus - the banked Eating penalty (+ the eager cascade skips of US-20), so the simulated Eating window end is the same as the one the real transition would produce
+        - the banked Fasting penalty is already counted by the Fasting window simulation (US-24 and before) and stays so
+      - This story changes no calculation of the real windows, bonuses or penalties; it only displays what is banked and makes the modeling consistent with the real transition
+      - This story changes the behaviour of previous stories - the following conflicts are identified and resolved as described above:
+        - US-12/US-13 (simulator): the simulated Eating window is no longer a plain 8 h, it counts the banked Eating bonus and penalty
+        - US-20 (four badges): in addition to the applied badges there are banked badges, shown in all states
+      - Testing scenario (worked example):
+        - the user prolonged Eating and has an Eating penalty of 2 h banked; in the Fasting window the badge "-2h penalty banked for next Eating window" is shown; in the Potential Eating window after it it is shown too; once the Eating window starts the banked badge disappears and the applied badge "-2h penalty applied!" appears
+        - in that Fasting window the simulator (US-13) with the first meal at 10:00 shows the Eating window ending at 16:00 (8 h - 2 h), not at 18:00
+        - a banked Eating bonus of 1 h and no penalty: the same simulation ends at 19:00 (8 h + 1 h)
+        - the user started eating prematurely (US-7 Option 2) with a Fasting penalty of 4 h banked: in the Eating window a "+4h penalty banked for next Fasting window" badge is shown

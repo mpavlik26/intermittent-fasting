@@ -861,6 +861,22 @@ body {
     color: var(--text-muted);
 }
 
+/* --- US-24: stored bonus covering break-fast penalties --- */
+.punishment-card p.stored-cover-note {
+    color: #86efac;
+}
+
+.stored-cover-notice {
+    margin: 0.75rem 0;
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #86efac;
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
 /* --- US-10: History Styles --- */
 .history-list {
     display: flex;

@@ -27,7 +27,7 @@ test('US-3: pending-reward badge shown when still in potential after fasting win
     await page.goto('/');
 
     await expect(page.locator('#fasting-bonus-badge')).toBeVisible();
-    await expect(page.locator('#fasting-bonus-text')).toContainText('+30m pending reward');
+    await expect(page.locator('#fasting-bonus-text')).toContainText('-30m fasting bonus banked');
     await expect(page.locator('#eating-bonus-badge')).toBeHidden();
 });
 
@@ -102,7 +102,7 @@ test('US-20: a Fasting bonus larger than 16h cascade-skips, extending the Eating
     expect(fastingBonusMs).toBeLessThan(4 * HOUR + 5 * MIN);
 });
 
-test('US-20: no Fasting bonus is shown in the Eating window (it is pending for the next fast)', async ({ page }) => {
+test('US-25: the Fasting bonus is shown in the Eating window only as banked for the next fast', async ({ page }) => {
     const now = Date.now();
     await setAppState(page, makeEatingState({
         fastingBonusMs: 30 * MIN,
@@ -111,7 +111,8 @@ test('US-20: no Fasting bonus is shown in the Eating window (it is pending for t
     await page.goto('/');
 
     await expect(page.locator('#current-state')).toHaveText('Eating Window');
-    await expect(page.locator('#fasting-bonus-badge')).toBeHidden();
+    await expect(page.locator('#fasting-bonus-badge')).toBeVisible();
+    await expect(page.locator('#fasting-bonus-text')).toHaveText('-30m fasting bonus banked');
 });
 
 // --- US-4: Eating Bonus ---
@@ -198,7 +199,7 @@ test('US-20: Fasting-window shows both the applied Fasting bonus and the banked 
     await expect(page.locator('#fasting-bonus-badge')).toBeVisible();
     await expect(page.locator('#fasting-bonus-text')).toContainText('-45m fasting bonus applied!');
     await expect(page.locator('#eating-bonus-badge')).toBeVisible();
-    await expect(page.locator('#eating-bonus-text')).toContainText('+2h eating bonus banked!');
+    await expect(page.locator('#eating-bonus-text')).toContainText('+2h eating bonus banked');
 });
 
 test('US-20: no badges in Fasting window when both bonus pools are empty', async ({ page }) => {

@@ -86,9 +86,9 @@ function setupEventListeners() {
     document.getElementById('btn-close-simulator').addEventListener('click', closeSimulator);
     elSliderFirstMeal.addEventListener('input', () => {
         if (appState.currentState === STATES.FASTING) {
-            // US-13/US-20: Coupled sliders — eating start drives eating end (1:1, no bonus coupling)
+            // US-13/US-25: Coupled sliders — eating start drives eating end (planned window length)
             const t1 = parseInt(elSliderFirstMeal.value);
-            elSliderLastMeal.value = Math.min(parseInt(elSliderLastMeal.max), t1 + 480);
+            elSliderLastMeal.value = Math.min(parseInt(elSliderLastMeal.max), getModeledEatingEndMins(t1));
         } else {
             if (parseInt(elSliderFirstMeal.value) > parseInt(elSliderLastMeal.value)) {
                 elSliderLastMeal.value = elSliderFirstMeal.value;
@@ -104,11 +104,12 @@ function setupEventListeners() {
     });
     elSliderLastMeal.addEventListener('input', () => {
         if (appState.currentState === STATES.FASTING) {
-            // US-13/US-20: Coupled sliders — desired eating end back-calculates eating start (1:1)
+            // US-13/US-25: Coupled sliders — desired eating end back-calculates eating start
+            // (window length without cascade skips; the end is then snapped to the planned one)
             const t2 = parseInt(elSliderLastMeal.value);
-            const t1 = Math.max(0, t2 - 480);
+            const t1 = Math.max(0, t2 - getModeledEatingEndMins(0));
             elSliderFirstMeal.value = t1;
-            elSliderLastMeal.value = Math.min(parseInt(elSliderLastMeal.max), t1 + 480);
+            elSliderLastMeal.value = Math.min(parseInt(elSliderLastMeal.max), getModeledEatingEndMins(t1));
         } else {
             if (parseInt(elSliderLastMeal.value) < parseInt(elSliderFirstMeal.value)) {
                 elSliderLastMeal.value = elSliderFirstMeal.value;

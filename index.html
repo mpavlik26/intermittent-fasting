@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=15">
+    <link rel="stylesheet" href="styles.css?v=16">
     
     <!-- PWA Tags -->
     <link rel="manifest" href="manifest.json?v=6">
@@ -176,6 +176,9 @@
                                     Fast will end at: <strong id="break-prolong-end">--:--</strong></p>
                                 <p id="break-prolong-bonus-note" class="hidden">Eating bonus is recalculated:
                                     <strong id="break-prolong-bonus">0m</strong>.</p>
+                                <p id="break-prolong-stored-note" class="stored-cover-note hidden">Stored Eating bonus used:
+                                    <strong id="break-prolong-stored-used">0m</strong>
+                                    (<strong id="break-prolong-stored-left">0m</strong> left in storage).</p>
                                 <button id="btn-break-prolong" class="btn primary-btn btn-sm">Prolong & Start
                                     Fast</button>
                             </div>
@@ -184,14 +187,20 @@
                                 <p>Starts a 100% standard 8h eating window now.
                                     Total penalty: <strong id="break-premature-penalty">0m</strong>.
                                     Next fast: <strong id="break-premature-interval">--:-- to --:--</strong></p>
+                                <p id="break-premature-stored-note" class="stored-cover-note hidden">Stored Fasting bonus used:
+                                    <strong id="break-premature-stored-used">0m</strong>
+                                    (<strong id="break-premature-stored-left">0m</strong> left in storage).</p>
                                 <button id="btn-break-premature" class="btn primary-btn btn-sm">Start Eating Now</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- US-24: transient notice after a retro log covered by stored bonus -->
+                <p id="stored-cover-notice" class="stored-cover-notice hidden" role="status"></p>
+
                 <div class="manual-log-section">
-                    <button id="btn-toggle-retro" class="btn secondary-btn toggle-btn">
+                    <button id="btn-toggle-retro"class="btn secondary-btn toggle-btn">
                         <span class="btn-text">Add Retrospective Log</span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -444,16 +453,16 @@
         </div>
     </template>
 
-    <script src="js/state.js?v=7"></script>
+    <script src="js/state.js?v=9"></script>
     <script src="js/time-utils.js?v=2"></script>
     <script src="js/history.js?v=3"></script>
-    <script src="js/transitions.js?v=6"></script>
-    <script src="js/simulator.js?v=2"></script>
+    <script src="js/transitions.js?v=7"></script>
+    <script src="js/simulator.js?v=3"></script>
     <script src="js/bonus-storage.js?v=7"></script>
     <script src="js/end-eating.js?v=1"></script>
-    <script src="js/ui.js?v=8"></script>
+    <script src="js/ui.js?v=10"></script>
     <script src="js/manual-session.js?v=4"></script>
-    <script src="js/main.js?v=5"></script>
+    <script src="js/main.js?v=6"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
