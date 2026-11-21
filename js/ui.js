@@ -43,8 +43,15 @@ function tick() {
 
         // Prediction 1: Prolonging — the new Eating penalty is deferred to the next Eating
         // window; it does NOT extend this restarted Fasting window
-        const predictedEatingPenalty = PROLONGING_PENALTY_MULTIPLIER * Math.max(0, now - originalEatingEnd);
+        // US-24: the stored Eating bonus covers the overshoot first; only the rest is penalised
+        const prolongCover = computeStoredCover(appState.storedEatingBonusMs, now - originalEatingEnd);
+        const predictedEatingPenalty = PROLONGING_PENALTY_MULTIPLIER * prolongCover.uncoveredMs;
         elBreakProlongPenalty.textContent = formatMinutesBadge(Math.floor(predictedEatingPenalty / 60000));
+        if (elBreakProlongStoredNote) {
+            elBreakProlongStoredNote.classList.toggle('hidden', prolongCover.usedMs <= 0);
+            elBreakProlongStoredUsed.textContent = formatMinutesBadge(Math.floor(prolongCover.usedMs / 60000));
+            elBreakProlongStoredLeft.textContent = formatMinutesBadge(Math.floor(prolongCover.remainingMs / 60000));
+        }
         const prolongRestartedEnd = now + DURATION_FASTING_MS - appState.fastingBonusMs + appState.fastingPenaltyMs;
         elBreakProlongEnd.innerHTML = renderTime(prolongRestartedEnd);
 
@@ -65,7 +72,14 @@ function tick() {
 
         // Prediction 2: Premature Start — the new Fasting penalty is deferred to the next
         // Fasting window (after the upcoming standard Eating window)
-        const predictedFastingPenalty = PREMATURE_START_PENALTY_MULTIPLIER * Math.max(0, appState.windowEndTime - now);
+        // US-24: the stored Fasting bonus covers the remaining fast time first; only the rest is penalised
+        const prematureCover = computeStoredCover(appState.storedFastingBonusMs, appState.windowEndTime - now);
+        const predictedFastingPenalty = PREMATURE_START_PENALTY_MULTIPLIER * prematureCover.uncoveredMs;
+        if (elBreakPrematureStoredNote) {
+            elBreakPrematureStoredNote.classList.toggle('hidden', prematureCover.usedMs <= 0);
+            elBreakPrematureStoredUsed.textContent = formatMinutesBadge(Math.floor(prematureCover.usedMs / 60000));
+            elBreakPrematureStoredLeft.textContent = formatMinutesBadge(Math.floor(prematureCover.remainingMs / 60000));
+        }
         elBreakPrematurePenalty.textContent = formatMinutesBadge(Math.floor(predictedFastingPenalty / 60000));
         // Interval: Starts now, Ends after (Eating 8h + Fasting 16h + Penalty)
         const nextFastStart = now + DURATION_EATING_MS;

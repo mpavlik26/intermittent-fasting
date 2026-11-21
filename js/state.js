@@ -1,5 +1,5 @@
 // --- Constants ---
-console.log("APP_VERSION: US-23-ver-3");
+console.log("APP_VERSION: US-24-ver-1");
 const STATES = {
     POTENTIAL_EATING: 'potential',
     EATING: 'eating',
@@ -101,6 +101,15 @@ const elBreakProlongPenalty = document.getElementById('break-prolong-penalty');
 const elBreakProlongEnd = document.getElementById('break-prolong-end');
 const elBreakPrematurePenalty = document.getElementById('break-premature-penalty');
 const elBreakPrematureInterval = document.getElementById('break-premature-interval');
+
+// US-24 DOM Elements: stored bonus used to cover break-fast penalties
+const elBreakProlongStoredNote = document.getElementById('break-prolong-stored-note');
+const elBreakProlongStoredUsed = document.getElementById('break-prolong-stored-used');
+const elBreakProlongStoredLeft = document.getElementById('break-prolong-stored-left');
+const elBreakPrematureStoredNote = document.getElementById('break-premature-stored-note');
+const elBreakPrematureStoredUsed = document.getElementById('break-premature-stored-used');
+const elBreakPrematureStoredLeft = document.getElementById('break-premature-stored-left');
+const elStoredCoverNotice = document.getElementById('stored-cover-notice');
 
 const elAppTitle = document.getElementById('app-title');
 const elDebugSection = document.querySelector('.debug-controls');

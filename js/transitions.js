@@ -19,6 +19,14 @@ function cascadeSkip(amountMs, standardWindowMs) {
     return { skips, remainderMs };
 }
 
+// US-24: how much of a stored bonus covers amountMs (1:1), what remains uncovered, and what is left
+// in the storage. Shared by the break-fast handlers and the live previews in ui.js.
+function computeStoredCover(storedMs, amountMs) {
+    const baseMs = Math.max(0, amountMs);
+    const usedMs = Math.min(Math.max(0, storedMs), baseMs);
+    return { usedMs, uncoveredMs: baseMs - usedMs, remainingMs: Math.max(0, storedMs) - usedMs };
+}
+
 // US-20: single source of truth for the Eating window that starts at startMs, given the
 // Fasting bonus that will be earned by starting then. Applies stored/banked Eating bonus,
 // Eating penalty, and eager cascade-skips (each full 16h of Fasting bonus adds 8h).
@@ -225,10 +233,11 @@ function submitMealLog() {
         mealTime >= appState.windowStartTime && mealTime <= appState.windowEndTime;
 
     if (isInsideActiveFast) {
+        // US-24: no dialog here, so the automatic use of the stored bonus is reported by a notice
         if (type === 'first') {
-            startEatingPrematurely(mealTime);
+            showStoredCoverNotice('Fasting', startEatingPrematurely(mealTime));
         } else {
-            prolongEatingAndStartFast(mealTime);
+            showStoredCoverNotice('Eating', prolongEatingAndStartFast(mealTime));
         }
     } else if (type === 'first') {
         transitionToEating(mealTime);
@@ -239,6 +248,19 @@ function submitMealLog() {
     elMealTimeInput.value = "";
     toggleRetroLog(false); // US-6: Auto-collapse after submit
     tick(); // Fast-forward state if needed
+}
+
+// US-24: transient notice after a retrospective log used part of a stored bonus
+let storedCoverNoticeTimer = null;
+function showStoredCoverNotice(kind, result) {
+    if (!elStoredCoverNotice || !result || result.usedMs <= 0) return;
+    const penaltyText = result.penaltyMs > 0
+        ? `${formatMinutesBadge(Math.floor(result.penaltyMs / 60000))} ${kind} penalty remains`
+        : 'no penalty';
+    elStoredCoverNotice.textContent = `${formatMinutesBadge(Math.floor(result.usedMs / 60000))} of stored ${kind} bonus used; ${penaltyText}.`;
+    elStoredCoverNotice.classList.remove('hidden');
+    clearTimeout(storedCoverNoticeTimer);
+    storedCoverNoticeTimer = setTimeout(() => elStoredCoverNotice.classList.add('hidden'), 10000);
 }
 
 function toggleRetroLog(forceValue) {
@@ -299,8 +321,12 @@ function startEatingPrematurely(retroTimeMs) {
     const originalAppliedFastingBonusMs = appState.appliedFastingBonusMs;
     const originalAppliedFastingPenaltyMs = appState.appliedFastingPenaltyMs;
 
-    // Option 2 (Penalty 2): set based on remaining fast time, deferred to the next Fasting window
-    appState.fastingPenaltyMs = PREMATURE_START_PENALTY_MULTIPLIER * Math.max(0, originalEnd - now);
+    // US-24: the stored Fasting bonus covers the remaining fast time 1:1 before any penalty is charged
+    const cover = computeStoredCover(appState.storedFastingBonusMs, originalEnd - now);
+    appState.storedFastingBonusMs -= cover.usedMs;
+
+    // Option 2 (Penalty 2): set based on the uncovered remaining fast time, deferred to the next Fasting window
+    appState.fastingPenaltyMs = PREMATURE_START_PENALTY_MULTIPLIER * cover.uncoveredMs;
 
     // US-7/US-20: Clear Option 1's deferred Eating penalty when starting a new Eating window this way
     appState.eatingPenaltyMs = 0;
@@ -331,15 +357,21 @@ function startEatingPrematurely(retroTimeMs) {
     toggleBreakFastLog(false);
     saveState();
     updateUI();
+    return { usedMs: cover.usedMs, penaltyMs: appState.fastingPenaltyMs, remainingStoredMs: cover.remainingMs };
 }
 
 function prolongEatingAndStartFast(retroTimeMs) {
     const now = typeof retroTimeMs === 'number' ? retroTimeMs : getCurrentTime();
     const originalTargetEnd = appState.lastEatingWindowTargetMs ?? appState.windowStartTime; // null-safe: no E → no overshoot
 
-    // Option 1 (Penalty 1): overshoot past the original Eating window's target end,
+    // US-24: the stored Eating bonus covers the overshoot 1:1; the Eating window end E moves by the used amount
+    const cover = computeStoredCover(appState.storedEatingBonusMs, now - originalTargetEnd);
+    appState.storedEatingBonusMs -= cover.usedMs;
+    if (cover.usedMs > 0) appState.lastEatingWindowTargetMs = originalTargetEnd + cover.usedMs;
+
+    // Option 1 (Penalty 1): the uncovered overshoot past the Eating window's target end,
     // deferred to the next Eating window (US-20: no longer applied immediately here)
-    appState.eatingPenaltyMs = PROLONGING_PENALTY_MULTIPLIER * Math.max(0, now - originalTargetEnd);
+    appState.eatingPenaltyMs = PROLONGING_PENALTY_MULTIPLIER * cover.uncoveredMs;
 
     // Restart Fast from now. Past E the previously banked Eating bonus is discarded;
     // US-21: before E the bonus is simply recalculated for the new "last meal" time (E − now).
@@ -367,4 +399,5 @@ function prolongEatingAndStartFast(retroTimeMs) {
     toggleBreakFastLog(false);
     saveState();
     updateUI();
+    return { usedMs: cover.usedMs, penaltyMs: PROLONGING_PENALTY_MULTIPLIER * cover.uncoveredMs, remainingStoredMs: cover.remainingMs };
 }
