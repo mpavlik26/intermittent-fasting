@@ -221,3 +221,25 @@
           - the dialog shows that 3 h of the stored Fasting bonus will be used (0 h remaining) and the Fasting penalty is 6 h (double the uncovered 3 h), instead of 12 h without the storage
           - had the stored Fasting bonus been 8 h, 6 h would be used (2 h remain in storage) and there would be no penalty
         - the same logic is applied to a retrospective log landing inside the active fast, followed by the notice
+    - US-25:
+      - As the user, I want to see at all times which bonuses and penalties are banked for the nearest upcoming window of the matching kind (US-20), and I want the simulator to count them - today e.g. after Prolong Eating I land in a Fasting window and cannot see that the next Eating window will be shorter by a penalty, and the simulated Eating window ignores that penalty
+      - Banked amounts - what is deferred to the next window of its kind and is not yet applied to any window
+        - Eating bonus (lengthens the next Eating window), Eating penalty (shortens the next Eating window), Fasting bonus (shortens the next Fasting window), Fasting penalty (extends the next Fasting window)
+        - the amounts already applied to the current window keep their existing "applied" badges (US-20) unchanged
+      - Display
+        - each banked amount that is greater than 0 is shown in every state (Potential Eating, Eating and Fasting) as a "banked" badge, in the same style as the existing badges - so a penalty or bonus banked for the next window is visible in the very window in which it was earned
+        - the text states the effect and the target window, e.g. "-2h penalty banked for next Eating window", "+1h eating bonus banked", "+2h penalty banked for next Fasting window", "-1h fasting bonus banked"; a banked amount of 0 shows no badge
+        - a "banked" badge never duplicates an "applied" badge of the same kind in the same state - the applied badge of the current window and the banked badge for the next window of the same kind are two different pieces of information and are both shown if both are non-zero
+        - the banked Eating bonus already shown in the Fasting window (US-20) and the Fasting bonus "pending reward" shown in the Potential Eating window (US-3/US-20) are kept, only unified with the new wording and shown in the other states as well
+      - Modeling - the Eating window that the simulator and the forecasts predict
+        - the simulator (US-12/US-13) and the modeled first meal of the Potential Eating window use the same calculation as the real transition to the Eating window (US-20): the standard 8 h + the banked Eating bonus - the banked Eating penalty (+ the eager cascade skips of US-20), so the simulated Eating window end is the same as the one the real transition would produce
+        - the banked Fasting penalty is already counted by the Fasting window simulation (US-24 and before) and stays so
+      - This story changes no calculation of the real windows, bonuses or penalties; it only displays what is banked and makes the modeling consistent with the real transition
+      - This story changes the behaviour of previous stories - the following conflicts are identified and resolved as described above:
+        - US-12/US-13 (simulator): the simulated Eating window is no longer a plain 8 h, it counts the banked Eating bonus and penalty
+        - US-20 (four badges): in addition to the applied badges there are banked badges, shown in all states
+      - Testing scenario (worked example):
+        - the user prolonged Eating and has an Eating penalty of 2 h banked; in the Fasting window the badge "-2h penalty banked for next Eating window" is shown; in the Potential Eating window after it it is shown too; once the Eating window starts the banked badge disappears and the applied badge "-2h penalty applied!" appears
+        - in that Fasting window the simulator (US-13) with the first meal at 10:00 shows the Eating window ending at 16:00 (8 h - 2 h), not at 18:00
+        - a banked Eating bonus of 1 h and no penalty: the same simulation ends at 19:00 (8 h + 1 h)
+        - the user started eating prematurely (US-7 Option 2) with a Fasting penalty of 4 h banked: in the Eating window a "+4h penalty banked for next Fasting window" badge is shown

@@ -55,7 +55,7 @@ function openSimulator() {
         elSimLabelLast.textContent = 'Eating ends';
         elSliderFirstMeal.disabled = false;
         elSliderFirstMeal.value = 0;
-        elSliderLastMeal.value = Math.min(480, totalMins);
+        elSliderLastMeal.value = Math.min(getModeledEatingEndMins(0), totalMins);
         simState.lastMealMinMins = 0;
     }
 
@@ -74,11 +74,9 @@ function getModeledFirstMealEffects(firstMealMs) {
     const delayMs = appState.windowEndTime && firstMealMs > appState.windowEndTime
         ? firstMealMs - appState.windowEndTime
         : 0;
-    const { skips, remainderMs } = cascadeSkip(delayMs, DURATION_FASTING_MS);
-    return {
-        eatingEndMs: firstMealMs + DURATION_EATING_MS + skips * DURATION_EATING_MS,
-        fastingBonusMs: delayMs > 0 ? remainderMs : appState.fastingBonusMs,
-    };
+    // US-25: same calculation as the real transitionToEating (banked Eating bonus/penalty, reservations, cascade)
+    const plan = planEatingWindow(firstMealMs, delayMs > 0 ? delayMs : appState.fastingBonusMs);
+    return { eatingEndMs: plan.endTime, fastingBonusMs: plan.remainderMs };
 }
 
 function calcSimulatedFast(firstMealMs, lastMealMs) {
@@ -110,10 +108,21 @@ function calcSimulatedFast(firstMealMs, lastMealMs) {
 // US-20: delaying the first meal earns a Fasting bonus that shortens the *next* Fasting
 // window, not this modeled Eating window — exposed separately as nextFastShortenedByMs.
 function calcSimulatedEating(firstMealMs) {
-    const nextFastShortenedByMs = Math.max(0, firstMealMs - simState.sliderStartMs);
+    // US-25: planned exactly like the real Eating window (banked Eating bonus/penalty, cascade skips).
+    // Only the delay counts as Fasting bonus: transitionToPotential zeroes any carried one.
+    const delayMs = Math.max(0, firstMealMs - simState.sliderStartMs);
+    const plan = planEatingWindow(firstMealMs, delayMs);
+    const nextFastShortenedByMs = plan.remainderMs;
     const eatStart = firstMealMs;
-    const eatEnd = firstMealMs + DURATION_EATING_MS;
+    const eatEnd = plan.endTime;
     return { eatStart, eatEnd, eatDurationMs: eatEnd - eatStart, nextFastShortenedByMs };
+}
+
+// US-25: slider position (minutes from sliderStartMs) of the modeled Eating end when eating starts at
+// firstMins — keeps the "Eating ends" handle on the displayed end (banked bonus/penalty, cascade).
+function getModeledEatingEndMins(firstMins) {
+    const { eatEnd } = calcSimulatedEating(simState.sliderStartMs + firstMins * 60000);
+    return Math.max(0, Math.floor((eatEnd - simState.sliderStartMs) / 60000));
 }
 
 function updateSimulatorOutput() {

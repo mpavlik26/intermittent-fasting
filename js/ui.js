@@ -88,20 +88,9 @@ function tick() {
 
     } else if (appState.currentState === STATES.POTENTIAL_EATING) {
         // US-3/US-20 Real-time feedback: pending Fasting bonus (no divisor, full 1:1)
-        const pendingFastingBonusMs = (appState.windowEndTime && now > appState.windowEndTime)
-            ? (now - appState.windowEndTime)
-            : 0;
-        if (pendingFastingBonusMs > 0) {
-            const bonusMins = Math.floor(pendingFastingBonusMs / (60 * 1000));
-            if (bonusMins > 0) {
-                elFastingBonusText.textContent = `+${formatMinutesBadge(bonusMins)} pending reward`;
-                elFastingBonusBadge.classList.remove('hidden');
-            } else {
-                elFastingBonusBadge.classList.add('hidden');
-            }
-        } else {
-            elFastingBonusBadge.classList.add('hidden');
-        }
+        const pendingFastingBonusMs = getPendingFastingBonusMs(now);
+        // US-25: banked badges (incl. the live pending Fasting bonus) keep ticking here
+        updateBankedBadges(now);
 
         // US-5/US-20: Potential Eating Forecast — exactly the window transitionToEating() would
         // create now: banked/stored Eating bonus, Eating penalty and cascade-skips all included
@@ -330,16 +319,6 @@ function updateUI() {
             elFastingBonusBadge.classList.add('hidden');
         }
 
-        // US-20: Eating bonus banked by finishing early, waiting for the next Eating window.
-        // US-22: informational only (no longer storable).
-        if (appState.eatingBonusMs > 0) {
-            const bonusMins = Math.floor(appState.eatingBonusMs / (60 * 1000));
-            elEatingBonusText.textContent = `+${formatMinutesBadge(bonusMins)} eating bonus banked!`;
-            elEatingBonusBadge.classList.remove('hidden');
-        } else {
-            elEatingBonusBadge.classList.add('hidden');
-        }
-
         // US-8/US-20 Penalty Badge: Fasting penalty extended THIS Fasting window
         if (appState.appliedFastingPenaltyMs > 0) {
             const penaltyMins = Math.floor(appState.appliedFastingPenaltyMs / 60000);
@@ -359,6 +338,50 @@ function updateUI() {
         elBreakFastSection.classList.remove('hidden');
     }
 
+    // US-25: banked badges for the next window of each kind (after the applied badges above)
+    updateBankedBadges(getCurrentTime());
+
     // US-10: Render history
     renderHistory();
+}
+
+// US-3/US-20: Fasting bonus earned so far by delaying the first meal in Potential Eating (1:1)
+function getPendingFastingBonusMs(now) {
+    return (appState.windowEndTime && now > appState.windowEndTime) ? (now - appState.windowEndTime) : 0;
+}
+
+function setBadge(badgeEl, textEl, text) {
+    if (text === null) {
+        badgeEl.classList.add('hidden');
+    } else {
+        textEl.textContent = text;
+        badgeEl.classList.remove('hidden');
+    }
+}
+
+// US-25: "banked" badges — amounts deferred to the next window of their kind. Only the badges
+// that are NOT the state's "applied" ones are touched, so applied and banked never collide:
+//   Potential: all four (Fasting bonus = live pending reward)
+//   Eating:    Fasting bonus/penalty (the Eating ones were consumed on entry -> applied badges)
+//   Fasting:   Eating bonus/penalty (the Fasting ones are the live/applied ones)
+function updateBankedBadges(now) {
+    const state = appState.currentState;
+    const mins = (ms) => Math.floor(ms / 60000);
+    const bankedText = (ms, build) => (mins(ms) > 0 ? build(formatMinutesBadge(mins(ms))) : null);
+
+    if (state !== STATES.EATING) {
+        setBadge(elEatingBonusBadge, elEatingBonusText,
+            bankedText(appState.eatingBonusMs, (a) => `+${a} eating bonus banked`));
+        setBadge(elEatingPenaltyBadge, elEatingPenaltyText,
+            bankedText(appState.eatingPenaltyMs, (a) => `-${a} penalty banked for next Eating window`));
+    }
+    if (state !== STATES.FASTING) {
+        // Potential: a delayed first meal replaces (not adds to) the carried bonus, like transitionToEating
+        const pendingMs = state === STATES.POTENTIAL_EATING ? getPendingFastingBonusMs(now) : 0;
+        const fastingBonusMs = pendingMs > 0 ? pendingMs : appState.fastingBonusMs;
+        setBadge(elFastingBonusBadge, elFastingBonusText,
+            bankedText(fastingBonusMs, (a) => `-${a} fasting bonus banked`));
+        setBadge(elFastingPenaltyBadge, elFastingPenaltyText,
+            bankedText(appState.fastingPenaltyMs, (a) => `+${a} penalty banked for next Fasting window`));
+    }
 }

@@ -85,9 +85,9 @@ test('US-20 Option 1: prolonging creates a deferred Eating penalty, NOT a longer
     expect(eatingPenaltyMs).toBeGreaterThan(2 * HOUR - 5 * MIN);
     expect(eatingPenaltyMs).toBeLessThan(2 * HOUR + 5 * MIN);
 
-    // No penalty badge in the Fasting window; the deferred penalty is not a Fasting one
+    // US-25: the deferred Eating penalty is banked (shown), but it is not a Fasting one
     await expect(page.locator('#fasting-penalty-badge')).toBeHidden();
-    await expect(page.locator('#eating-penalty-badge')).toBeHidden();
+    await expect(page.locator('#eating-penalty-text')).toContainText('penalty banked for next Eating window');
 });
 
 test('US-20 Option 1: prolonging discards a banked Eating bonus', async ({ page }) => {
