@@ -217,4 +217,5 @@ function updateStoredBonusIndicator(bonusType, el) {
 function updateStoredBonusIndicators() {
     updateStoredBonusIndicator('fasting', elStoredFastingBonusIndicator);
     updateStoredBonusIndicator('eating', elStoredEatingBonusIndicator);
+    refreshManualStoredBonusLabels(); // US-23: open manual forms show the live stored values
 }

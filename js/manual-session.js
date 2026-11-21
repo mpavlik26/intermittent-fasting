@@ -62,6 +62,117 @@ function setupManualForm(targetId, isInitialSetup = false) {
     elApply.addEventListener('click', () => handleManualApply(elType, elStart, elEnd, isInitialSetup));
 
     updateVisibility();
+    setupManualStoredBonusSection(target);
+}
+
+// --- US-23: manual setting of stored bonuses ---
+
+const MANUAL_STORED_BONUS_TYPES = ['eating', 'fasting'];
+
+// "h:mm" (any number of hours, minutes 0-59) -> whole minutes, or null when invalid
+function parseHoursMinutes(text) {
+    const m = /^\s*(\d{1,6}):([0-5]\d)\s*$/.exec(text);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+function formatHoursMinutes(totalMinutes) {
+    return `${Math.floor(totalMinutes / 60)}:${String(totalMinutes % 60).padStart(2, '0')}`;
+}
+
+function getStoredBonusMinutes(bonusType) {
+    const ms = bonusType === 'fasting' ? appState.storedFastingBonusMs : appState.storedEatingBonusMs;
+    return Math.floor((ms || 0) / MIN_MS);
+}
+
+function setupManualStoredBonusSection(target) {
+    const section = target.querySelector('.manual-stored-section');
+    if (!section) return;
+    const elConfirm = section.querySelector('.manual-stored-confirm');
+
+    // Per-row draft: minutes shown in the field, whether the user edited it, whether the typed text is invalid
+    const rows = {};
+    MANUAL_STORED_BONUS_TYPES.forEach(type => {
+        rows[type] = {
+            minutes: 0,
+            touched: false,
+            invalid: false,
+            elInput: section.querySelector(`.manual-stored-input[data-bonus="${type}"]`),
+            elCurrent: section.querySelector(`.manual-stored-current[data-bonus="${type}"]`),
+        };
+    });
+
+    const updateConfirmState = () => {
+        elConfirm.disabled = MANUAL_STORED_BONUS_TYPES.some(type => rows[type].invalid);
+    };
+
+    // Refreshes "Current" labels; untouched rows follow the live stored value, edited drafts are kept
+    const refresh = () => {
+        MANUAL_STORED_BONUS_TYPES.forEach(type => {
+            const row = rows[type];
+            const current = getStoredBonusMinutes(type);
+            row.elCurrent.textContent = formatMinutesBadge(current);
+            if (!row.touched) {
+                row.minutes = current;
+                row.invalid = false;
+                const text = formatHoursMinutes(current);
+                if (row.elInput.value !== text) row.elInput.value = text;
+                row.elInput.classList.remove('invalid');
+            }
+        });
+        updateConfirmState();
+    };
+    section._refreshStoredBonus = refresh;
+
+    MANUAL_STORED_BONUS_TYPES.forEach(type => {
+        const row = rows[type];
+        row.elInput.addEventListener('input', () => {
+            row.touched = true;
+            const parsed = parseHoursMinutes(row.elInput.value);
+            row.invalid = parsed === null;
+            if (parsed !== null) row.minutes = parsed;
+            row.elInput.classList.toggle('invalid', row.invalid);
+            updateConfirmState();
+        });
+    });
+
+    section.querySelectorAll('.manual-stored-step').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const row = rows[btn.dataset.bonus];
+            row.touched = true;
+            row.invalid = false;
+            row.minutes = Math.max(0, row.minutes + Number(btn.dataset.deltaMin));
+            row.elInput.value = formatHoursMinutes(row.minutes);
+            row.elInput.classList.remove('invalid');
+            updateConfirmState();
+        });
+    });
+
+    elConfirm.addEventListener('click', () => {
+        if (MANUAL_STORED_BONUS_TYPES.some(type => rows[type].invalid)) return;
+        // Only rows that were actually changed are written (an untouched row keeps its exact value);
+        // pending reservations, current window and live bonuses/penalties stay untouched.
+        MANUAL_STORED_BONUS_TYPES.forEach(type => {
+            const row = rows[type];
+            if (row.touched && row.minutes !== getStoredBonusMinutes(type)) {
+                const ms = row.minutes * MIN_MS;
+                if (type === 'fasting') appState.storedFastingBonusMs = ms;
+                else appState.storedEatingBonusMs = ms;
+            }
+            row.touched = false;
+        });
+        saveState();
+        updateUI();
+        refresh();
+    });
+
+    refresh();
+}
+
+// Keeps the "Current" labels of open manual forms in sync with the stored bonuses
+function refreshManualStoredBonusLabels() {
+    document.querySelectorAll('.manual-stored-section').forEach(section => {
+        if (section._refreshStoredBonus) section._refreshStoredBonus();
+    });
 }
 
 function updateManualEndDefault(elType, elStart, elEnd) {

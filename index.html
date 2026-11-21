@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=14">
+    <link rel="stylesheet" href="styles.css?v=15">
     
     <!-- PWA Tags -->
     <link rel="manifest" href="manifest.json?v=6">
@@ -410,6 +410,37 @@
                 </div>
                 <button id="btn-apply-manual" class="btn primary-btn">Apply Settings</button>
             </div>
+            <!-- US-23: manual setting of stored bonuses (independent of Apply Settings) -->
+            <div class="manual-stored-section">
+                <h3 class="manual-stored-title">Stored bonuses</h3>
+                <div class="manual-stored-row" data-bonus="eating">
+                    <div class="manual-stored-head">
+                        <span class="manual-stored-label">Stored Eating</span>
+                        <span class="manual-stored-current-wrap">Current: <strong class="manual-stored-current" data-bonus="eating"></strong></span>
+                    </div>
+                    <div class="manual-stored-controls">
+                        <button type="button" class="manual-stored-step" data-bonus="eating" data-delta-min="-60" aria-label="Eating minus 1 hour">&minus;1h</button>
+                        <button type="button" class="manual-stored-step" data-bonus="eating" data-delta-min="-1" aria-label="Eating minus 1 minute">&minus;1m</button>
+                        <input type="text" class="manual-stored-input" data-bonus="eating" inputmode="numeric" autocomplete="off" aria-label="Stored Eating bonus (h:mm)">
+                        <button type="button" class="manual-stored-step" data-bonus="eating" data-delta-min="1" aria-label="Eating plus 1 minute">+1m</button>
+                        <button type="button" class="manual-stored-step" data-bonus="eating" data-delta-min="60" aria-label="Eating plus 1 hour">+1h</button>
+                    </div>
+                </div>
+                <div class="manual-stored-row" data-bonus="fasting">
+                    <div class="manual-stored-head">
+                        <span class="manual-stored-label">Stored Fasting</span>
+                        <span class="manual-stored-current-wrap">Current: <strong class="manual-stored-current" data-bonus="fasting"></strong></span>
+                    </div>
+                    <div class="manual-stored-controls">
+                        <button type="button" class="manual-stored-step" data-bonus="fasting" data-delta-min="-60" aria-label="Fasting minus 1 hour">&minus;1h</button>
+                        <button type="button" class="manual-stored-step" data-bonus="fasting" data-delta-min="-1" aria-label="Fasting minus 1 minute">&minus;1m</button>
+                        <input type="text" class="manual-stored-input" data-bonus="fasting" inputmode="numeric" autocomplete="off" aria-label="Stored Fasting bonus (h:mm)">
+                        <button type="button" class="manual-stored-step" data-bonus="fasting" data-delta-min="1" aria-label="Fasting plus 1 minute">+1m</button>
+                        <button type="button" class="manual-stored-step" data-bonus="fasting" data-delta-min="60" aria-label="Fasting plus 1 hour">+1h</button>
+                    </div>
+                </div>
+                <button type="button" class="btn primary-btn manual-stored-confirm">Confirm stored bonuses</button>
+            </div>
         </div>
     </template>
 
@@ -418,10 +449,10 @@
     <script src="js/history.js?v=3"></script>
     <script src="js/transitions.js?v=6"></script>
     <script src="js/simulator.js?v=2"></script>
-    <script src="js/bonus-storage.js?v=6"></script>
+    <script src="js/bonus-storage.js?v=7"></script>
     <script src="js/end-eating.js?v=1"></script>
     <script src="js/ui.js?v=8"></script>
-    <script src="js/manual-session.js?v=3"></script>
+    <script src="js/manual-session.js?v=4"></script>
     <script src="js/main.js?v=5"></script>
     <script>
         if ('serviceWorker' in navigator) {
