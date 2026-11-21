@@ -97,6 +97,10 @@ function logLastMeal(retroTimeMs) {
         if (getCurrentTime() < fastingEnd) {
             appState.currentState = STATES.FASTING;
             appState.windowStartTime = timeToUse;
+            // E: this Fasting window follows no Eating window of its own (it starts at the last meal), so the
+            // "target end of the Eating window" is the last meal itself. Without it E stays null/stale and the
+            // break-fast penalties (2 × (now − E)) explode into thousands of hours.
+            appState.lastEatingWindowTargetMs = timeToUse;
             appState.eatingBonusMs = eatingBonus; // US-20: banked for the next Eating window
             appState.windowEndTime = fastingEnd;
             appState.appliedFastingBonusMs = fastingBonusMs;
@@ -331,7 +335,7 @@ function startEatingPrematurely(retroTimeMs) {
 
 function prolongEatingAndStartFast(retroTimeMs) {
     const now = typeof retroTimeMs === 'number' ? retroTimeMs : getCurrentTime();
-    const originalTargetEnd = appState.lastEatingWindowTargetMs;
+    const originalTargetEnd = appState.lastEatingWindowTargetMs ?? appState.windowStartTime; // null-safe: no E → no overshoot
 
     // Option 1 (Penalty 1): overshoot past the original Eating window's target end,
     // deferred to the next Eating window (US-20: no longer applied immediately here)
