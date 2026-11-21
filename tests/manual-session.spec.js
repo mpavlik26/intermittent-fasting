@@ -254,3 +254,29 @@ test('Fasting state saved without E (null): prolong is null-safe (no overshoot i
     expect(st.eatingPenaltyMs).toBeLessThan(DURATION_EATING_MS);
     expect(st.windowEndTime - st.windowStartTime).toBe(DURATION_FASTING_MS);
 });
+
+test('manual Fasting window: retro last meal before the start banks Eating bonus = start − meal; later meal gives none', async ({ page }) => {
+    await setAppState(page, makePotentialState());
+    await page.goto('/');
+    const start = await page.evaluate(() => {
+        const s = Date.now() - 2 * 3600000;
+        manualSetWindow('fasting', s, s + 16 * 3600000);
+        return s;
+    });
+
+    // Meal 1 h before the declared start → Fasting moves earlier, bonus = 1 h
+    const earlier = start - HOUR;
+    await page.evaluate((t) => logLastMeal(t), earlier);
+    let st = await page.evaluate(() => ({ ...appState }));
+    expect(st.currentState).toBe('fasting');
+    expect(st.windowStartTime).toBe(earlier);
+    expect(st.windowEndTime).toBe(earlier + DURATION_FASTING_MS);
+    expect(st.eatingBonusMs).toBe(HOUR);
+
+    // Correcting it to a meal after the declared start → no bonus
+    const later = start + 20 * MIN;
+    await page.evaluate((t) => logLastMeal(t), later);
+    st = await page.evaluate(() => ({ ...appState }));
+    expect(st.windowStartTime).toBe(later);
+    expect(st.eatingBonusMs).toBe(0);
+});
